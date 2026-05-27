@@ -1,0 +1,33 @@
+Berean Standard Bible (BSB) — Attribution & Licensing
+======================================================
+
+The Holy Bible, Berean Standard Bible, BSB is produced in cooperation with
+Bible Hub, Discovery Bible, unfoldingWord, Bible Aquifer, OpenBible.com,
+and the Berean Bible Translation Committee.
+
+This text of God's Word has been dedicated to the public domain. Free
+resources and databases are available at https://bereanbible.com/.
+
+Source
+------
+
+The bsb.txt file in this directory is the official tab-separated plain-text
+distribution downloaded from:
+
+    https://bereanbible.com/bsb.txt
+
+Format: one verse per line, two tab-separated columns:
+
+    <Book Chapter:Verse>\t<English verse text>
+
+The first three lines are header / license metadata and are skipped by the
+parser.
+
+Use
+---
+
+soap-journal bundles this text so the application works fully offline. The
+parser at backend/soap_journal/parsers/bsb.py converts this source into the
+canonical JSON schema defined in backend/soap_journal/parsers/schema.py;
+the loader at backend/soap_journal/cli/load_translation.py ingests that
+canonical JSON into the application database.
