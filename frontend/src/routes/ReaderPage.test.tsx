@@ -6,7 +6,12 @@ import { Route, Routes } from "react-router-dom";
 import { ReaderPage } from "@/routes/ReaderPage";
 import { STORAGE_KEYS } from "@/lib/storage";
 import { server } from "@/test/msw/server";
-import { makeChapter } from "@/test/utils/bible";
+import {
+  BSB_TRANSLATION,
+  KJV_TRANSLATION,
+  makeChapter,
+  makeTranslationList,
+} from "@/test/utils/bible";
 import { renderWithProviders } from "@/test/utils/renderWithProviders";
 import { useLocation } from "react-router-dom";
 
@@ -316,5 +321,132 @@ describe("ReaderPage", () => {
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: /^psalms 23$/i })).toBeInTheDocument(),
     );
+  });
+});
+
+// ---- compare mode tests ----------------------------------------------------
+
+function useMultiTranslationHandlers(): void {
+  server.use(
+    http.get("/api/v1/bible/translations", () =>
+      HttpResponse.json(
+        makeTranslationList([BSB_TRANSLATION, KJV_TRANSLATION]),
+        { status: 200 },
+      ),
+    ),
+  );
+}
+
+describe("ReaderPage — compare mode", () => {
+  it("compare button is disabled when only one translation is loaded", async () => {
+    renderReader(["/read/BSB/John/3"]);
+    await screen.findByTestId("verse-16");
+    expect(screen.getByRole("button", { name: /compare translations/i })).toBeDisabled();
+  });
+
+  it("compare button is enabled when two translations are loaded", async () => {
+    useMultiTranslationHandlers();
+    renderReader(["/read/BSB/John/3"]);
+    await screen.findByTestId("verse-16");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /compare translations/i }),
+      ).toBeEnabled(),
+    );
+  });
+
+  it("clicking compare renders two panes", async () => {
+    useMultiTranslationHandlers();
+    const user = userEvent.setup();
+    renderReader(["/read/BSB/John/3"]);
+    await screen.findByTestId("verse-16");
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /compare translations/i }),
+      ).toBeEnabled(),
+    );
+    await user.click(screen.getByRole("button", { name: /compare translations/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("region", { name: /primary translation/i })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: /comparison translation/i })).toBeInTheDocument();
+    });
+  });
+
+  it("closing the comparison pane returns to single-pane mode", async () => {
+    useMultiTranslationHandlers();
+    const user = userEvent.setup();
+    renderReader(["/read/BSB/John/3?compare=KJV"]);
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: /comparison translation/i })).toBeInTheDocument(),
+    );
+
+    await user.click(screen.getByRole("button", { name: /close comparison/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: /comparison translation/i })).not.toBeInTheDocument(),
+    );
+  });
+
+  it("translation picker renders a select when two translations are loaded", async () => {
+    useMultiTranslationHandlers();
+    renderReader(["/read/BSB/John/3"]);
+    await screen.findByTestId("verse-16");
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: /translation/i })).toBeInTheDocument(),
+    );
+  });
+
+  it("compare button is hidden when already comparing", async () => {
+    useMultiTranslationHandlers();
+    renderReader(["/read/BSB/John/3?compare=KJV"]);
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: /comparison translation/i })).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: /compare translations/i })).not.toBeInTheDocument();
+  });
+
+  it("verse click in pane B passes pane B's translation code", async () => {
+    useMultiTranslationHandlers();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <Routes>
+        <Route path="/read" element={<ReaderPage />} />
+        <Route
+          path="/read/:translationCode/:bookName/:chapterNumber"
+          element={<ReaderPage />}
+        />
+        <Route path="/entries/new" element={<EntryNewStub />} />
+      </Routes>,
+      { initialEntries: ["/read/BSB/John/3?compare=KJV"] },
+    );
+
+    const comparisonPane = await screen.findByRole("region", { name: /comparison translation/i });
+    const verse16 = await within(comparisonPane).findByTestId("verse-16");
+    await user.click(verse16);
+
+    expect(await screen.findByTestId("new-entry-state")).toHaveTextContent(
+      "John 3:16 / KJV",
+    );
+  });
+
+  it("next/prev navigation preserves compare mode", async () => {
+    useMultiTranslationHandlers();
+    const user = userEvent.setup();
+    renderReader(["/read/BSB/John/3?compare=KJV"]);
+
+    // Wait for chapter content to load so the nav buttons appear
+    const primaryPane = await screen.findByRole("region", { name: /primary translation/i });
+    await within(primaryPane).findByTestId("verse-16");
+
+    await user.click(screen.getByRole("button", { name: /^next/i }));
+
+    await waitFor(() => {
+      const primaryPane = screen.getByRole("region", { name: /primary translation/i });
+      expect(within(primaryPane).getByRole("heading", { name: /^john 4$/i })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("region", { name: /comparison translation/i })).toBeInTheDocument();
   });
 });
