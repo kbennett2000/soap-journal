@@ -36,6 +36,36 @@ Pick the half you want to work on:
 Tests must pass before opening a PR. New features ship with tests; bug
 fixes ship with a regression test.
 
+## Writing a Bible parser
+
+The app supports multiple Bible translations through a parser
+architecture. Each parser is a standalone CLI module that converts a
+source format (PDF, USFM, plain text, etc.) into the canonical JSON
+schema defined in `backend/soap_journal/parsers/schema.py`.
+
+**Reference implementations:**
+
+- `backend/soap_journal/parsers/bsb.py` — parses the BSB tab-separated
+  plain-text source.
+- `backend/soap_journal/parsers/nkjv.py` — parses a user-provided NKJV
+  PDF with line-joining logic for wrapped verses.
+
+**Steps to add a new translation:**
+
+1. Create `backend/soap_journal/parsers/<code>.py` with a `main()`
+   CLI entry point matching the existing pattern:
+   `python -m soap_journal.parsers.<code> <source> --out <output.json>`
+2. Parse the source into the intermediate `BooksData` dict, then
+   assemble a `CanonicalTranslation` (Pydantic validates all 66 books
+   are present, chapters are 1..N, verses are contiguous, etc.).
+3. If the source uses book abbreviations not yet in
+   `backend/soap_journal/core/bible/books.py`, add them as aliases.
+4. Write tests following the pattern in `bsb_test.py` / `nkjv_test.py`:
+   line-parser unit tests with synthetic data, a CLI smoke test, and an
+   optional real-source test gated on file presence.
+5. Copyrighted source files go in `bibles/` (gitignored). Public-domain
+   sources go in `bible-sources/`.
+
 ## Branches and commits
 
 - Branch off `main`. Use a prefix that matches the change:

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- NKJV parser (`python -m soap_journal.parsers.nkjv`) for users who have
+  their own New King James Version PDF.
+- `bibles/` directory for user-provided copyrighted Bible source files
+  (gitignored; `bibles/README.md` explains usage).
+- 11 new book abbreviation aliases (Deu, Rut, Sol, Joe, Amo, Oba, Mat,
+  Mar, Joh, Phi, Jam) to support NKJV and common shorthand.
+
 ## [0.1.0] — 2026-05-27
 
 Initial release.

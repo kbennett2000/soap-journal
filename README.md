@@ -116,6 +116,12 @@ python -m soap_journal.cli load-translation data/translations/<code>.json
 
 Once a second translation is loaded, the side-by-side comparison view in the reader becomes active.
 
+### NKJV
+
+An NKJV parser is included. If you have the 1982 NKJV PDF, place it in
+the `bibles/` directory and follow the instructions in
+[`bibles/README.md`](bibles/README.md).
+
 **Note on copyright:** only translations you have the legal right to redistribute should be loaded onto a publicly-accessible instance. The BSB is permissively licensed; many modern translations (ESV, NIV, NASB, etc.) are not. Loading a copyrighted translation onto a server you control for personal use is between you and the publisher.
 
 ## Manual install (without Docker)
