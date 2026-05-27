@@ -24,6 +24,10 @@ build/
 *.local
 !.env.example
 
+# User-provided copyrighted Bible source files (never commit)
+bibles/*
+!bibles/README.md
+
 # Runtime data (SQLite DB, Bible JSON, uploads — never commit)
 data/
 
