@@ -4,10 +4,16 @@
  */
 
 import type {
+  AppliedFilters,
+  CalendarDay,
+  CalendarResponse,
   EntryEnvelope,
   EntryListResponse,
   EntryResponse,
   EntryTagSummary,
+  OnThisDayResponse,
+  PassageEntriesResponse,
+  ResolvedReference,
   TagListResponse,
   TagSummary,
 } from "@/types/api";
@@ -62,6 +68,7 @@ export function makeEntryEnvelope(
 export function makeEntryList(
   entries: EntryResponse[] = [makeEntry()],
   pagination: Partial<Omit<EntryListResponse, "entries" | "applied_filters">> = {},
+  appliedFilters: Partial<AppliedFilters> = {},
 ): EntryListResponse {
   return {
     entries,
@@ -69,11 +76,11 @@ export function makeEntryList(
     limit: pagination.limit ?? 20,
     offset: pagination.offset ?? 0,
     applied_filters: {
-      q: null,
-      book: null,
-      tag: null,
-      from_date: null,
-      to_date: null,
+      q: appliedFilters.q ?? null,
+      book: appliedFilters.book ?? null,
+      tag: appliedFilters.tag ?? null,
+      from_date: appliedFilters.from_date ?? null,
+      to_date: appliedFilters.to_date ?? null,
     },
   };
 }
@@ -89,4 +96,43 @@ export function makeTagSummary(overrides: Partial<TagSummary> = {}): TagSummary 
 
 export function makeTagList(tags: TagSummary[] = []): TagListResponse {
   return { tags };
+}
+
+export function makeCalendarResponse(
+  overrides: { year?: number; month?: number; days?: CalendarDay[] } = {},
+): CalendarResponse {
+  const year = overrides.year ?? 2026;
+  const month = overrides.month ?? 5;
+  const days = overrides.days ?? [];
+  const total = days.reduce((sum, d) => sum + d.count, 0);
+  return { year, month, days, total };
+}
+
+export function makeOnThisDayResponse(
+  entries: EntryResponse[] = [],
+  target_date = "2026-05-27",
+): OnThisDayResponse {
+  return { target_date, entries };
+}
+
+const DEFAULT_PASSAGE_REF: ResolvedReference = {
+  canonical_string: "John 3",
+  translation_code: "BSB",
+  book: {
+    name: "John",
+    abbreviation: "John",
+    order_index: 43,
+    testament: "NT",
+    chapter_count: 21,
+  },
+  chapter_number: 3,
+  start_verse: 1,
+  end_verse: 36,
+};
+
+export function makePassageEntriesResponse(
+  entries: EntryResponse[] = [],
+  reference: ResolvedReference = DEFAULT_PASSAGE_REF,
+): PassageEntriesResponse {
+  return { reference, count: entries.length, entries };
 }
