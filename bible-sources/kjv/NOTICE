@@ -1,0 +1,25 @@
+King James Version (KJV) — Attribution & Licensing
+===================================================
+
+The King James Version of the Holy Bible was first published in 1611
+under the authority of King James I of England. The text is in the
+public domain worldwide.
+
+Source
+------
+
+The kjv.pdf file in this directory is a PDF rendering of the complete
+KJV text (66 books, 1,189 chapters, 31,102 verses). The underlying
+scripture text is public domain; the PDF layout/typesetting is provided
+as a convenience for parsing.
+
+Use
+---
+
+soap-journal bundles this text so the application ships with two
+translations out of the box (BSB and KJV), enabling the side-by-side
+translation comparison feature without any additional setup. The parser
+at backend/soap_journal/parsers/kjv.py converts this source into the
+canonical JSON schema defined in backend/soap_journal/parsers/schema.py;
+the loader at backend/soap_journal/cli/load_translation.py ingests that
+canonical JSON into the application database.

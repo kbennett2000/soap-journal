@@ -10,6 +10,20 @@ committed (e.g., the Berean Standard Bible).
 
 ## Available Parsers
 
+### KJV (King James Version)
+
+The KJV is bundled with the application at `bible-sources/kjv/` and loaded
+automatically on first boot — no manual steps needed. If you prefer to
+parse and load it yourself:
+
+```bash
+cd backend
+python -m soap_journal.parsers.kjv ../bible-sources/kjv/kjv.pdf --out ../data/translations/kjv.json
+python -m soap_journal.cli load-translation ../data/translations/kjv.json
+```
+
+The KJV text is in the public domain.
+
 ### NKJV (New King James Version)
 
 **Source**: A specific 908-page PDF of the 1982 NKJV with one verse per
