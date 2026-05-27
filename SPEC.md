@@ -151,7 +151,7 @@ BSB is available in clean structured formats already, so the BSB parser is essen
 
 A `.env` file at the repo root, generated from `.env.example` on first run. Keys:
 
-- `PORT` — port the server listens on. Default `8080`.
+- `PORT` — port the server listens on. Default `8045`.
 - `DATA_DIR` — absolute or relative path to the data directory. Default `./data`.
 - `SECRET_KEY` — used for session signing. Generated on first run if absent.
 - `OPEN_REGISTRATION` — `true` / `false`. Admin can also toggle at runtime.

@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // backend can run on different ports without CORS gymnastics. The
 // proxy target is configurable via VITE_API_PROXY_TARGET; default is
 // the FastAPI default port.
-const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8080";
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8045";
 
 export default defineConfig({
   plugins: [react()],
