@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,5 +28,17 @@ export default defineConfig({
         secure: false,
       },
     },
+  },
+  // Vitest config — kept here rather than in a separate vitest.config.ts so
+  // there's one source of truth for path aliases / plugins. The build
+  // pipeline doesn't include src/test/** because Vite tree-shakes anything
+  // not reachable from src/main.tsx, so no separate prod exclusion is
+  // needed.
+  test: {
+    globals: true,
+    environment: "happy-dom",
+    setupFiles: ["src/test/setup.ts"],
+    css: true,
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
 });
