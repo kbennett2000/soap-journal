@@ -19,7 +19,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    port: int = 8080
+    port: int = 8045
     data_dir: Path = Path("./data")
     secret_key: str = ""
     bind_host: str = "0.0.0.0"

@@ -6,7 +6,7 @@ for project overview and conventions.
 ## Scripts
 
 ```bash
-npm run dev          # vite dev server with /api proxy to localhost:8080
+npm run dev          # vite dev server with /api proxy to localhost:8045
 npm run build        # typecheck + production build
 npm run preview      # serve the built bundle (no /api proxy — see below)
 npm run lint         # eslint
@@ -55,4 +55,4 @@ top of the file.
 `/api` proxy**. To exercise the production bundle against the backend,
 either serve `dist/` from the backend's static mount (Docker slice) or
 sit a reverse proxy in front of both. The dev server (`npm run dev`)
-proxies `/api → localhost:8080` automatically.
+proxies `/api → localhost:8045` automatically.
