@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from soap_journal.config import get_settings
 from soap_journal.db.base import Base
+from soap_journal.db import models  # noqa: F401  register models with Base.metadata
 
 config = context.config
 

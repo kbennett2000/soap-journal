@@ -1,10 +1,14 @@
+import secrets
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
+
+SECRET_KEY_FILENAME = ".secret_key"
+SECRET_KEY_BYTES = 64
 
 
 class Settings(BaseSettings):
@@ -17,7 +21,7 @@ class Settings(BaseSettings):
 
     port: int = 8080
     data_dir: Path = Path("./data")
-    secret_key: str = Field(..., min_length=1)
+    secret_key: str = ""
     open_registration: bool = False
     bind_host: str = "0.0.0.0"
 
@@ -34,6 +38,27 @@ class Settings(BaseSettings):
         return f"sqlite+aiosqlite:///{db_path}"
 
 
+def resolve_secret_key(data_dir: Path) -> str:
+    """Return a SECRET_KEY value, generating and persisting one if missing.
+
+    Reads or creates `{data_dir}/.secret_key`. The file is created with
+    mode 0600 so it isn't world-readable on a multi-user host.
+    """
+    data_dir.mkdir(parents=True, exist_ok=True)
+    key_path = data_dir / SECRET_KEY_FILENAME
+    if key_path.exists():
+        existing = key_path.read_text().strip()
+        if existing:
+            return existing
+    token = secrets.token_urlsafe(SECRET_KEY_BYTES)
+    key_path.write_text(token)
+    key_path.chmod(0o600)
+    return token
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]
+    settings = Settings()  # type: ignore[call-arg]
+    if not settings.secret_key:
+        settings.secret_key = resolve_secret_key(settings.data_dir)
+    return settings
