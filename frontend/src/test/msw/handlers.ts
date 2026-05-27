@@ -1,5 +1,10 @@
 import { http, HttpResponse } from "msw";
 
+import {
+  makeChapter,
+  makeTranslationDetail,
+  makeTranslationList,
+} from "@/test/utils/bible";
 import { makeUser } from "@/test/utils/factories";
 import type { AuthEnvelope } from "@/types/api";
 
@@ -31,9 +36,62 @@ export const logoutHandler = http.post("/api/v1/auth/logout", () => {
   return new HttpResponse(null, { status: 204 });
 });
 
+// ---- Bible reader ---------------------------------------------------------
+
+export const translationsHandler = http.get("/api/v1/bible/translations", () => {
+  return HttpResponse.json(makeTranslationList(), { status: 200 });
+});
+
+export const translationDetailHandler = http.get(
+  "/api/v1/bible/translations/:code",
+  () => HttpResponse.json(makeTranslationDetail(), { status: 200 }),
+);
+
+export const chapterHandler = http.get(
+  "/api/v1/bible/translations/:code/books/:bookName/chapters/:chapterNumber",
+  ({ params }) => {
+    const bookName = String(params.bookName);
+    const chapterNumber = Number(params.chapterNumber);
+    return HttpResponse.json(
+      makeChapter({ bookName, chapterNumber }),
+      { status: 200 },
+    );
+  },
+);
+
+export const resolveHandler = http.get("/api/v1/bible/resolve", ({ request }) => {
+  const url = new URL(request.url);
+  const ref = url.searchParams.get("ref") ?? "";
+  // Default: pretend everything resolves to John 3:16 unless overridden.
+  return HttpResponse.json(
+    {
+      reference: {
+        canonical_string: ref,
+        translation_code: "BSB",
+        book: {
+          name: "John",
+          abbreviation: "John",
+          order_index: 43,
+          testament: "NT",
+          chapter_count: 21,
+        },
+        chapter_number: 3,
+        start_verse: 16,
+        end_verse: 16,
+      },
+      verses: [],
+    },
+    { status: 200 },
+  );
+});
+
 export const defaultHandlers = [
   meHandler,
   loginHandler,
   registerHandler,
   logoutHandler,
+  translationsHandler,
+  translationDetailHandler,
+  chapterHandler,
+  resolveHandler,
 ];
