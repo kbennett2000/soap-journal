@@ -1,6 +1,7 @@
 import { apiRequest } from "@/lib/api";
 import type {
   ChapterResponse,
+  PassageEntriesResponse,
   ResolvedReferenceResponse,
   TranslationDetailResponse,
   TranslationListResponse,
@@ -42,6 +43,15 @@ export async function resolveReference(
   translationCode?: string,
 ): Promise<ResolvedReferenceResponse> {
   return apiRequest<ResolvedReferenceResponse>("GET", "/bible/resolve", {
+    query: { ref, translation: translationCode },
+  });
+}
+
+export async function getPassageEntries(
+  ref: string,
+  translationCode?: string,
+): Promise<PassageEntriesResponse> {
+  return apiRequest<PassageEntriesResponse>("GET", "/bible/passages/entries", {
     query: { ref, translation: translationCode },
   });
 }

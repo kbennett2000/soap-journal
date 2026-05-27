@@ -1,10 +1,12 @@
 import { apiRequest } from "@/lib/api";
 import type {
+  CalendarResponse,
   EntryCreateRequest,
   EntryEnvelope,
   EntryListResponse,
   EntryResponse,
   EntryUpdateRequest,
+  OnThisDayResponse,
   TagAutocompleteResponse,
   TagListResponse,
 } from "@/types/api";
@@ -18,10 +20,15 @@ import type {
  * `entry_count`) so those pass through as-is.
  */
 
-interface ListEntriesParams {
+export interface ListEntriesParams {
   limit?: number;
   offset?: number;
   order?: "newest" | "oldest";
+  q?: string;
+  book?: string;
+  tag?: string;
+  from_date?: string; // YYYY-MM-DD
+  to_date?: string;
 }
 
 export async function listEntries(
@@ -32,7 +39,30 @@ export async function listEntries(
       limit: params.limit,
       offset: params.offset,
       order: params.order,
+      q: params.q,
+      book: params.book,
+      tag: params.tag,
+      from_date: params.from_date,
+      to_date: params.to_date,
     },
+  });
+}
+
+export async function getCalendar(
+  year: number,
+  month: number,
+): Promise<CalendarResponse> {
+  return apiRequest<CalendarResponse>("GET", "/entries/calendar", {
+    query: { year, month },
+  });
+}
+
+export async function getOnThisDay(
+  date?: string,
+  yearsBack?: number,
+): Promise<OnThisDayResponse> {
+  return apiRequest<OnThisDayResponse>("GET", "/entries/on-this-day", {
+    query: { date, years_back: yearsBack },
   });
 }
 
