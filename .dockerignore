@@ -1,0 +1,48 @@
+# Version control
+.git/
+.gitignore
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Runtime data (mounted as a volume at runtime; never bake into the image)
+data/
+
+# Python caches and virtual envs
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.coverage
+**/htmlcov/
+backend/.venv/
+backend/venv/
+backend/requirements-dev.txt
+backend/conftest.py
+**/*_test.py
+
+# Node / frontend (npm ci will install fresh inside the build stage)
+**/node_modules/
+frontend/dist/
+**/.vite/
+**/*.tsbuildinfo
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker artifacts themselves
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
