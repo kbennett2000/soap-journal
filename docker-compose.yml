@@ -7,9 +7,9 @@ services:
     container_name: soap-journal
     restart: unless-stopped
     # Host-side port is configurable from .env without rebuilding. Inside the
-    # container we always bind 8080.
+    # container we always bind 8080; the host-side default is 8045.
     ports:
-      - "${PORT:-8080}:8080"
+      - "${PORT:-8045}:8080"
     env_file:
       - .env
     volumes:

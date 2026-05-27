@@ -31,7 +31,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Open `http://<your-server-ip>:8080` from any device on your LAN. The first user to register becomes the admin.
+Open `http://<your-server-ip>:8045` from any device on your LAN. The first user to register becomes the admin.
 
 **What you get out of the box:** on first start, the server runs migrations and loads the BSB Bible automatically. You'll be ready to journal as soon as you register the first user.
 
@@ -41,7 +41,7 @@ All configuration lives in `.env`:
 
 | Variable     | Default     | Description                                       |
 | ------------ | ----------- | ------------------------------------------------- |
-| `PORT`       | `8080`      | Host-side port published by Compose               |
+| `PORT`       | `8045`      | Host-side port published by Compose               |
 | `SECRET_KEY` | (generated) | Session signing key; auto-generated on first run  |
 | `DATA_DIR`   | `/data`     | (Advanced) data path inside the container         |
 
@@ -64,7 +64,7 @@ Everything you care about lives in `./data` on the host. Stop the container, cop
 
 ## Troubleshooting
 
-- **Port already in use** — change `PORT` in `.env` (e.g. `PORT=9090`) and `docker compose up -d`. The container always binds 8080 internally; Compose maps it to the host.
+- **Port already in use** — change `PORT` in `.env` (e.g. `PORT=9090`) and `docker compose up -d`. The container always binds 8080 internally; Compose maps that to whatever host port you choose.
 - **Permission errors on `./data`** — the container runs as UID 1000. If your host UID differs and you've bind-mounted an existing `./data`, run `sudo chown -R 1000:1000 ./data` once.
 - **Viewing logs** — `docker compose logs -f` (or `docker compose logs --tail=100 soap-journal`).
 - **Want HTTPS?** v1 ships HTTP only on the assumption you're on a trusted LAN. Run a reverse proxy (Caddy, nginx, Traefik) in front of the container yourself — first-class HTTPS is a v2 topic.
@@ -126,7 +126,7 @@ npm run build
 # Run (backend serves the built frontend)
 cd ../backend
 FRONTEND_DIST_DIR=../frontend/dist DATA_DIR=./data \
-    uvicorn soap_journal.main:create_app --factory --host 0.0.0.0 --port 8080
+    uvicorn soap_journal.main:create_app --factory --host 0.0.0.0 --port 8045
 ```
 
 ## Development
@@ -140,7 +140,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 alembic upgrade head
-uvicorn soap_journal.main:create_app --factory --reload --port 8080
+uvicorn soap_journal.main:create_app --factory --reload --port 8045
 
 # Frontend (separate terminal)
 cd frontend
