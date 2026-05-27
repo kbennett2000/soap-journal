@@ -15,12 +15,21 @@ import type {
   VerseResponse,
 } from "@/types/api";
 
-const BSB: TranslationSummary = {
+export const BSB_TRANSLATION: TranslationSummary = {
   code: "BSB",
   name: "Berean Standard Bible",
   language: "en",
   copyright: "Public domain — test fixture.",
 };
+
+export const KJV_TRANSLATION: TranslationSummary = {
+  code: "KJV",
+  name: "King James Version",
+  language: "en",
+  copyright: "Public domain — test fixture.",
+};
+
+const BSB = BSB_TRANSLATION;
 
 const JOHN_SUMMARY: BookSummary = {
   name: "John",
@@ -48,8 +57,10 @@ const PSALMS_SUMMARY: BookSummary = {
 
 export const TEST_BOOKS: BookSummary[] = [GENESIS_SUMMARY, PSALMS_SUMMARY, JOHN_SUMMARY];
 
-export function makeTranslationList(): TranslationListResponse {
-  return { translations: [BSB] };
+export function makeTranslationList(
+  translations?: TranslationSummary[],
+): TranslationListResponse {
+  return { translations: translations ?? [BSB] };
 }
 
 export function makeTranslationDetail(
@@ -74,6 +85,7 @@ export function makeVerse(overrides: Partial<VerseResponse> = {}): VerseResponse
 }
 
 interface ChapterOverrides {
+  translationCode?: string;
   bookName?: string;
   chapterNumber?: number;
   verses?: VerseResponse[];
@@ -97,7 +109,7 @@ export function makeChapter(overrides: ChapterOverrides = {}): ChapterResponse {
     ? overrides.next ?? null
     : { book_name: "John", chapter_number: 4 };
   return {
-    translation_code: "BSB",
+    translation_code: overrides.translationCode ?? "BSB",
     book,
     chapter_number: overrides.chapterNumber ?? 3,
     verses:
