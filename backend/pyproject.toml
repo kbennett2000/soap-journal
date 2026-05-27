@@ -38,4 +38,5 @@ asyncio_default_fixture_loop_scope = "session"
 filterwarnings = [
     "ignore::DeprecationWarning:pydantic.*",
     "ignore::DeprecationWarning:sqlalchemy.*",
+    "ignore::DeprecationWarning:passlib.*",
 ]
