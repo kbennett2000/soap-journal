@@ -68,6 +68,101 @@ def test_unique_canonical_names() -> None:
     assert len(set(names)) == len(names)
 
 
+def test_all_66_nkjv_abbreviations_resolve() -> None:
+    nkjv_abbrs = [
+        "Gen",
+        "Exo",
+        "Lev",
+        "Num",
+        "Deu",
+        "Jos",
+        "Jdg",
+        "Rut",
+        "1Sa",
+        "2Sa",
+        "1Ki",
+        "2Ki",
+        "1Ch",
+        "2Ch",
+        "Ezr",
+        "Neh",
+        "Est",
+        "Job",
+        "Psa",
+        "Pro",
+        "Ecc",
+        "Sol",
+        "Isa",
+        "Jer",
+        "Lam",
+        "Eze",
+        "Dan",
+        "Hos",
+        "Joe",
+        "Amo",
+        "Oba",
+        "Jon",
+        "Mic",
+        "Nah",
+        "Hab",
+        "Zep",
+        "Hag",
+        "Zec",
+        "Mal",
+        "Mat",
+        "Mar",
+        "Luk",
+        "Joh",
+        "Act",
+        "Rom",
+        "1Co",
+        "2Co",
+        "Gal",
+        "Eph",
+        "Phi",
+        "Col",
+        "1Th",
+        "2Th",
+        "1Ti",
+        "2Ti",
+        "Tit",
+        "Phm",
+        "Heb",
+        "Jam",
+        "1Pe",
+        "2Pe",
+        "1Jo",
+        "2Jo",
+        "3Jo",
+        "Jud",
+        "Rev",
+    ]
+    assert len(nkjv_abbrs) == 66
+    for abbr in nkjv_abbrs:
+        book = get_book_by_name(abbr)
+        assert book is not None, f"NKJV abbreviation {abbr!r} not found"
+
+
+def test_nkjv_new_aliases_resolve_correctly() -> None:
+    expected = {
+        "Deu": "Deuteronomy",
+        "Rut": "Ruth",
+        "Sol": "Song of Solomon",
+        "Joe": "Joel",
+        "Amo": "Amos",
+        "Oba": "Obadiah",
+        "Mat": "Matthew",
+        "Mar": "Mark",
+        "Joh": "John",
+        "Phi": "Philippians",
+        "Jam": "James",
+    }
+    for abbr, name in expected.items():
+        book = get_book_by_name(abbr)
+        assert book is not None, f"{abbr} should resolve"
+        assert book.name == name, f"{abbr} -> {book.name}, expected {name}"
+
+
 def test_book_model_is_frozen() -> None:
     book = ALL_BOOKS[0]
     try:
