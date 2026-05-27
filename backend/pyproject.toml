@@ -1,0 +1,36 @@
+[project]
+name = "soap-journal-backend"
+version = "0.1.0"
+description = "soap-journal backend — FastAPI app for SOAP-method Bible journaling."
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["soap_journal"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "ASYNC",
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/versions/*.py" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["soap_journal"]
+python_files = ["*_test.py"]
+asyncio_mode = "auto"
