@@ -22,7 +22,6 @@ class Settings(BaseSettings):
     port: int = 8080
     data_dir: Path = Path("./data")
     secret_key: str = ""
-    open_registration: bool = False
     bind_host: str = "0.0.0.0"
 
     @field_validator("data_dir")
