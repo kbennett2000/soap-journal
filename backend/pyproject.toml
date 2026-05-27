@@ -34,3 +34,8 @@ minversion = "8.0"
 testpaths = ["soap_journal"]
 python_files = ["*_test.py"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+filterwarnings = [
+    "ignore::DeprecationWarning:pydantic.*",
+    "ignore::DeprecationWarning:sqlalchemy.*",
+]
