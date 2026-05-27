@@ -75,6 +75,38 @@ async def db_session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
                 await transaction.rollback()
 
 
+_BSB_SOURCE = Path(__file__).parent.parent / "bible-sources" / "bsb" / "bsb.txt"
+
+
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+async def bsb_loaded(engine: AsyncEngine) -> AsyncIterator[None]:
+    """Load the bundled BSB into the test DB once for the whole session.
+
+    Bible tests opt in by depending on this fixture. The load runs against
+    a dedicated committed connection so the data persists across per-test
+    transactions that roll back. Using the real BSB (not a synthetic
+    mini-translation) keeps the tests honest about chapter counts,
+    omitted-verse handling, and book-boundary navigation.
+    """
+    if not _BSB_SOURCE.exists():
+        pytest.skip("BSB source not bundled; skipping BSB-dependent tests")
+
+    from soap_journal.cli.load_translation import load_canonical_translation  # noqa: E402
+    from soap_journal.parsers.bsb import parse_bsb_source  # noqa: E402
+
+    text = _BSB_SOURCE.read_text(encoding="utf-8")
+    translation, _renames = parse_bsb_source(text)
+
+    async with engine.connect() as connection:
+        session_factory = async_sessionmaker(
+            bind=connection, expire_on_commit=False, autoflush=False
+        )
+        async with session_factory() as session:
+            await load_canonical_translation(session, translation)
+            await session.commit()
+    yield
+
+
 @pytest.fixture
 def app(settings: Settings, db_session: AsyncSession) -> FastAPI:
     application = create_app()
