@@ -74,10 +74,13 @@ export function useAuth(): UseAuthResult {
       await apiRequest<void>("POST", "/auth/logout");
     },
     onSuccess: () => {
-      // Skip the round-trip back to /auth/me — the cookie is gone, so we
-      // know the answer is "not signed in." Setting the cache directly is
-      // faster and there's no scenario where the server would disagree.
-      queryClient.setQueryData(ME_KEY, undefined);
+      // Drop the cached user. We use `removeQueries` rather than
+      // `setQueryData(ME_KEY, undefined)` because react-query v5 treats
+      // `undefined` as "no-op" in `setQueryData`, so the prior user
+      // would actually stay around. Removing the query forces useQuery
+      // to refetch on next render; the server's /auth/me will 401 now
+      // that the cookie is gone, and `fetchMe` turns that into undefined.
+      queryClient.removeQueries({ queryKey: ME_KEY });
     },
   });
 
