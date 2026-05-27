@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Layout } from "@/components/Layout";
 import { RequireAdmin } from "@/components/RequireAdmin";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -57,9 +58,16 @@ const router = createBrowserRouter([
       { path: "settings", element: <SettingsTab /> },
     ],
   },
-  { path: "*", element: <NotFoundPage /> },
+  // Unknown paths render the 404 inside the standard Layout when the
+  // user is authenticated, so the top bar still appears. Unauth users
+  // get redirected to /login by RequireAuth instead.
+  { path: "*", element: protectedElement(<NotFoundPage />) },
 ]);
 
 export function App(): JSX.Element {
-  return <RouterProvider router={router} />;
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
+  );
 }
