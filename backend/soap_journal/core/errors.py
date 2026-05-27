@@ -10,6 +10,8 @@ class ErrorCode(StrEnum):
     INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
     NOT_AUTHENTICATED = "NOT_AUTHENTICATED"
     ADMIN_REQUIRED = "ADMIN_REQUIRED"
+    USER_NOT_FOUND = "USER_NOT_FOUND"
+    LAST_ADMIN = "LAST_ADMIN"
 
 
 def raise_http(status: int, code: ErrorCode, message: str | None = None) -> NoReturn:
