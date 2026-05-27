@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 from pydantic import ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from soap_journal.cli.load_translation import (
@@ -16,6 +17,8 @@ from soap_journal.cli.load_translation import (
 from soap_journal.core.bible.books import ALL_BOOKS
 from soap_journal.db.models.book import Book
 from soap_journal.db.models.chapter import Chapter
+from soap_journal.db.models.footnote import Footnote
+from soap_journal.db.models.heading import Heading
 from soap_journal.db.models.translation import Translation
 from soap_journal.db.models.verse import Verse
 from soap_journal.parsers.schema import (
@@ -26,6 +29,22 @@ from soap_journal.parsers.schema import (
     CanonicalTranslation,
     CanonicalVerse,
 )
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def clean_translations(db_session: AsyncSession) -> AsyncSession:
+    """Start each loader test with an empty translations table.
+
+    The session-scoped `bsb_loaded` fixture (used by the reader API tests)
+    commits BSB to the shared in-memory DB; without this fixture the loader
+    tests' row-count assertions would depend on test ordering.
+    Deletes here run inside the per-test transaction and roll back at
+    teardown, so this never affects other tests' view of BSB.
+    """
+    for model in (Footnote, Heading, Verse, Chapter, Book, Translation):
+        await db_session.execute(delete(model))
+    await db_session.flush()
+    return db_session
 
 
 # ---- fixtures --------------------------------------------------------------
@@ -91,8 +110,9 @@ def _full_translation(
 
 
 async def test_load_inserts_translation_books_chapters_verses(
-    db_session: AsyncSession,
+    clean_translations: AsyncSession,
 ) -> None:
+    db_session = clean_translations
     payload = _full_translation(enrich_genesis=True)
     books, chapters, verses = await load_canonical_translation(db_session, payload)
 
@@ -132,8 +152,9 @@ async def test_load_inserts_translation_books_chapters_verses(
 
 
 async def test_loading_same_translation_twice_replaces_cleanly(
-    db_session: AsyncSession,
+    clean_translations: AsyncSession,
 ) -> None:
+    db_session = clean_translations
     first = _full_translation(code="TST", name="First name")
     second = _full_translation(code="TST", name="Renamed")
 
@@ -160,8 +181,9 @@ async def test_loading_same_translation_twice_replaces_cleanly(
 
 
 async def test_loading_second_translation_isolates_from_first(
-    db_session: AsyncSession,
+    clean_translations: AsyncSession,
 ) -> None:
+    db_session = clean_translations
     a = _full_translation(code="AAA", name="Alpha")
     b = _full_translation(code="BBB", name="Beta")
 

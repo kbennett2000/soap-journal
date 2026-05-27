@@ -42,6 +42,39 @@ canonical JSON file into the configured database (reads `DATA_DIR` from
 the env-resolved `Settings`). Re-running with the same `code` replaces
 the existing translation atomically; the loader is idempotent.
 
+## Reference syntax
+
+The jump-bar endpoint `GET /api/v1/bible/resolve?ref=...` and the central
+parser in `core/references.py` accept:
+
+| Input                | Canonical          | Notes                              |
+| -------------------- | ------------------ | ---------------------------------- |
+| `John 3:16`          | `John 3:16`        | Single verse                       |
+| `John 3:16-20`       | `John 3:16-20`     | Verse range within one chapter     |
+| `John 3`             | `John 3`           | Whole chapter                      |
+| `Jn 3:16`            | `John 3:16`        | Abbreviation                       |
+| `1Cor 13`            | `1 Corinthians 13` | No-space numbered book             |
+| `Song of Songs 2:1`  | `Song of Solomon 2:1` | Alias                           |
+| `Apocalypse 22:21`   | `Revelation 22:21` | Alias                              |
+| `john 3:16-20`       | `John 3:16-20`     | Case-insensitive                   |
+| `John 3:16–20`       | `John 3:16-20`     | En dash or em dash also accepted   |
+
+The parser is whitespace-tolerant and validates structure against the
+static book list in `core/bible/books.py`; it does **not** verify the
+chapter / verse range exists in any particular loaded translation (the API
+layer does that and returns `REFERENCE_OUT_OF_RANGE` or `CHAPTER_NOT_FOUND`
+when it does not).
+
+### Not supported in v1
+
+- **Cross-chapter ranges** (`John 3:30-4:2`). The parser rejects these
+  with a dedicated `cross-chapter ranges are not supported` message. A v2
+  syntax would need to decide how to render the second chapter's leading
+  context; deferred until we have a UI need.
+- **Multiple references in one call** (`John 3:16; Rom 8:28`). Rejected
+  outright. The frontend should split on `;` / `,` itself and call
+  `/resolve` once per reference if it needs both.
+
 ## SECRET_KEY
 
 The `SECRET_KEY` env var signs session cookies. It is resolved at app startup
