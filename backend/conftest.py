@@ -14,7 +14,6 @@ _TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="soap-journal-tests-"))
 
 os.environ["DATA_DIR"] = str(_TEST_DATA_DIR)
 os.environ["SECRET_KEY"] = "test-secret-key-not-for-production"
-os.environ["OPEN_REGISTRATION"] = "false"
 os.environ["PORT"] = "8080"
 os.environ["BIND_HOST"] = "127.0.0.1"
 

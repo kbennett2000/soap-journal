@@ -69,3 +69,14 @@ async def cleanup_expired_sessions(db: AsyncSession, user_id: int) -> None:
         .execution_options(synchronize_session="fetch")
     )
     await db.commit()
+
+
+async def delete_user_sessions(db: AsyncSession, user_id: int) -> None:
+    """Invalidate every active session for a user. Used by admin password
+    reset and as a pre-step to a user delete."""
+    await db.execute(
+        delete(UserSession)
+        .where(UserSession.user_id == user_id)
+        .execution_options(synchronize_session="fetch")
+    )
+    await db.commit()

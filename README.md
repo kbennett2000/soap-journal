@@ -38,13 +38,16 @@ Open `http://<your-server-ip>:8080` from any device on your LAN. The first user 
 
 All configuration lives in `.env`:
 
-| Variable            | Default     | Description                                          |
-| ------------------- | ----------- | ---------------------------------------------------- |
-| `PORT`              | `8080`      | Port the server listens on                           |
-| `DATA_DIR`          | `./data`    | Where the SQLite DB and Bible files live             |
-| `SECRET_KEY`        | (generated) | Session signing key; auto-generated on first run     |
-| `OPEN_REGISTRATION` | `false`     | If `true`, anyone on the LAN can self-register       |
-| `BIND_HOST`         | `0.0.0.0`   | Interface to bind to                                 |
+| Variable     | Default     | Description                                      |
+| ------------ | ----------- | ------------------------------------------------ |
+| `PORT`       | `8080`      | Port the server listens on                       |
+| `DATA_DIR`   | `./data`    | Where the SQLite DB and Bible files live         |
+| `SECRET_KEY` | (generated) | Session signing key; auto-generated on first run |
+| `BIND_HOST`  | `0.0.0.0`   | Interface to bind to                             |
+
+Self-registration is controlled at runtime by the admin through the API
+(`PUT /api/v1/admin/settings`). On a fresh install it defaults to off; the
+first user to register becomes the admin and can flip it on for everyone else.
 
 ## Adding a Bible Translation
 
