@@ -23,7 +23,7 @@ export function Layout({ children }: LayoutProps): JSX.Element {
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="text-lg font-semibold">soap-journal</div>
+          <Link to="/" className="text-lg font-semibold hover:text-slate-600 dark:hover:text-slate-300">soap-journal</Link>
           <div className="flex items-center gap-3">
             {user?.is_admin && (
               <Link
