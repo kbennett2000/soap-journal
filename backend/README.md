@@ -23,6 +23,25 @@ Run them from this directory:
 pytest -v
 ```
 
+The default suite includes two tests that exercise the bundled BSB source
+(parser + canonical-schema smoke). On a modern machine the full suite still
+runs in well under 10 seconds. If the BSB source is missing from
+`bible-sources/bsb/bsb.txt` those two tests skip automatically.
+
+## CLI tools
+
+`python -m soap_journal.parsers.bsb <source.txt> --out <canonical.json>`
+parses the official BSB tab-separated plain text into the canonical JSON
+schema. The CLI uses Python's `argparse` (no extra dep) — simple enough
+that adding `typer` for one command isn't worth it. Add a new parser by
+dropping a sibling module under `soap_journal/parsers/` that emits the
+same canonical format.
+
+`python -m soap_journal.cli load-translation <canonical.json>` loads a
+canonical JSON file into the configured database (reads `DATA_DIR` from
+the env-resolved `Settings`). Re-running with the same `code` replaces
+the existing translation atomically; the loader is idempotent.
+
 ## SECRET_KEY
 
 The `SECRET_KEY` env var signs session cookies. It is resolved at app startup

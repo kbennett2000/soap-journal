@@ -49,9 +49,28 @@ Self-registration is controlled at runtime by the admin through the API
 (`PUT /api/v1/admin/settings`). On a fresh install it defaults to off; the
 first user to register becomes the admin and can flip it on for everyone else.
 
+## Bundled Bible
+
+This software bundles the **Berean Standard Bible (BSB)**, freely available
+for use and redistribution from <https://bereanbible.com/>. The original
+plain-text source and the BSB's attribution / public-domain notice live in
+[`bible-sources/bsb/`](bible-sources/bsb/) — see
+[`bible-sources/bsb/NOTICE`](bible-sources/bsb/NOTICE) for details.
+
+To load the bundled BSB into your database on first install:
+
+```bash
+cd backend
+alembic upgrade head
+python -m soap_journal.parsers.bsb ../bible-sources/bsb/bsb.txt --out /tmp/bsb.json
+python -m soap_journal.cli load-translation /tmp/bsb.json
+```
+
 ## Adding a Bible Translation
 
-`soap-journal` ships with the BSB (Berean Standard Bible). To add another translation, write or use a parser that converts the source into the canonical JSON format, then load it:
+To add another translation, write or use a parser that converts the source
+into the canonical JSON format (`backend/soap_journal/parsers/schema.py`),
+then load it:
 
 ```bash
 python -m soap_journal.parsers.<translation> path/to/source --out data/translations/<code>.json
