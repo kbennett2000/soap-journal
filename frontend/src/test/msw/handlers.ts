@@ -62,10 +62,11 @@ export const translationDetailHandler = http.get(
 export const chapterHandler = http.get(
   "/api/v1/bible/translations/:code/books/:bookName/chapters/:chapterNumber",
   ({ params }) => {
+    const translationCode = String(params.code);
     const bookName = String(params.bookName);
     const chapterNumber = Number(params.chapterNumber);
     return HttpResponse.json(
-      makeChapter({ bookName, chapterNumber }),
+      makeChapter({ translationCode, bookName, chapterNumber }),
       { status: 200 },
     );
   },
