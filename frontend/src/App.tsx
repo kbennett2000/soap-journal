@@ -3,6 +3,10 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { RequireAuth } from "@/components/RequireAuth";
 import { DashboardPage } from "@/routes/DashboardPage";
+import { EntryDetailPage } from "@/routes/EntryDetailPage";
+import { EntryEditPage } from "@/routes/EntryEditPage";
+import { EntryListPage } from "@/routes/EntryListPage";
+import { EntryNewPage } from "@/routes/EntryNewPage";
 import { LoginPage } from "@/routes/LoginPage";
 import { NotFoundPage } from "@/routes/NotFoundPage";
 import { ReaderPage } from "@/routes/ReaderPage";
@@ -20,6 +24,13 @@ const router = createBrowserRouter([
   {
     path: "/read/:translationCode/:bookName/:chapterNumber",
     element: protectedElement(<ReaderPage />),
+  },
+  { path: "/entries", element: protectedElement(<EntryListPage />) },
+  { path: "/entries/new", element: protectedElement(<EntryNewPage />) },
+  { path: "/entries/:entryId", element: protectedElement(<EntryDetailPage />) },
+  {
+    path: "/entries/:entryId/edit",
+    element: protectedElement(<EntryEditPage />),
   },
   { path: "*", element: <NotFoundPage /> },
 ]);
