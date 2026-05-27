@@ -75,6 +75,43 @@ when it does not).
   outright. The frontend should split on `;` / `,` itself and call
   `/resolve` once per reference if it needs both.
 
+## Entry retrieval
+
+`GET /api/v1/entries` accepts the filters `q`, `book`, `tag`, `from_date`,
+`to_date`. All filters AND together; pagination (`limit`, `offset`) and
+`order` work the same with or without them. `applied_filters` in the
+response echoes what was applied so the frontend can render filter chips
+without re-deriving from the URL — the echoed `book` is the canonical
+name even if the user typed an alias.
+
+### Why `LIKE` instead of FTS5
+
+The `q` filter is `LIKE '%substring%'` (case-insensitive, %/_/\ escaped).
+A single user's journal fits comfortably in a few thousand rows at any
+realistic horizon, and SQLite scans them in milliseconds. FTS5 buys us
+nothing measurable at v1 scale and would add a synced index to maintain
+on every entry save. Revisit when search shows up slow.
+
+### On this day — Feb 29
+
+The query matches entries where `entry_date.month == target.month` AND
+`entry_date.day == target.day`. So:
+
+- Target = Feb 29 of a leap year → matches Feb 29 entries from prior
+  leap years (24 % 4 == 0 etc.).
+- Target = Feb 28 of a non-leap year → does **not** pull in Feb 29
+  entries (day 28 ≠ day 29). This is intentional: the user asked for
+  Feb 28, the system returns Feb 28s.
+
+### Passage cross-references
+
+`GET /api/v1/bible/passages/entries?ref=...` matches by **verse_id**.
+Each translation has its own `verses` rows, so an entry created against
+one translation will not be returned when querying another translation's
+passage even if the (book, chapter, verse) numbering is identical.
+Cross-translation matching by (book, chapter, verse) tuple is a v2
+concern; deferred.
+
 ## SECRET_KEY
 
 The `SECRET_KEY` env var signs session cookies. It is resolved at app startup

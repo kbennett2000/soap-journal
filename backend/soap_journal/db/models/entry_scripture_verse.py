@@ -17,6 +17,7 @@ class EntryScriptureVerse(Base):
     entry_id: Mapped[int] = mapped_column(
         ForeignKey("entries.id", ondelete="CASCADE"),
         primary_key=True,
+        index=True,
     )
     verse_id: Mapped[int] = mapped_column(
         ForeignKey("verses.id", ondelete="CASCADE"),

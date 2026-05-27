@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from soap_journal.schemas.entries import EntryResponse
+
 
 class TranslationSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -82,3 +84,11 @@ class ResolvedReference(BaseModel):
 class ResolvedReferenceResponse(BaseModel):
     reference: ResolvedReference
     verses: list[VerseResponse]
+
+
+class PassageEntriesResponse(BaseModel):
+    """Cross-references from a passage to the current user's entries."""
+
+    reference: ResolvedReference
+    count: int
+    entries: list[EntryResponse]
