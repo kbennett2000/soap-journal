@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     data_dir: Path = Path("./data")
     secret_key: str = ""
     bind_host: str = "0.0.0.0"
+    frontend_dist_dir: Path | None = None
 
     @field_validator("data_dir")
     @classmethod
@@ -30,6 +31,15 @@ class Settings(BaseSettings):
         if not value.is_absolute():
             value = REPO_ROOT / value
         return value.resolve()
+
+    @field_validator("frontend_dist_dir", mode="before")
+    @classmethod
+    def _coerce_frontend_dist_dir(cls, value: object) -> object:
+        if value is None:
+            return None
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value
 
     @property
     def database_url(self) -> str:
