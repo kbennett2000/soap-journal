@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +25,14 @@ export function Layout({ children }: LayoutProps): JSX.Element {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <div className="text-lg font-semibold">soap-journal</div>
           <div className="flex items-center gap-3">
+            {user?.is_admin && (
+              <Link
+                to="/admin"
+                className="text-sm font-medium text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
+              >
+                Admin
+              </Link>
+            )}
             {user && (
               <span className="text-sm text-slate-600 dark:text-slate-300">
                 {user.username}

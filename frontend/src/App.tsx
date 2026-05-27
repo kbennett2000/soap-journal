@@ -1,7 +1,11 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 
 import { Layout } from "@/components/Layout";
+import { RequireAdmin } from "@/components/RequireAdmin";
 import { RequireAuth } from "@/components/RequireAuth";
+import { SettingsTab } from "@/components/admin/SettingsTab";
+import { UsersTab } from "@/components/admin/UsersTab";
+import { AdminPage } from "@/routes/AdminPage";
 import { CalendarPage } from "@/routes/CalendarPage";
 import { DashboardPage } from "@/routes/DashboardPage";
 import { EntryDetailPage } from "@/routes/EntryDetailPage";
@@ -15,6 +19,16 @@ import { ReaderPage } from "@/routes/ReaderPage";
 const protectedElement = (element: JSX.Element): JSX.Element => (
   <RequireAuth>
     <Layout>{element}</Layout>
+  </RequireAuth>
+);
+
+const adminElement = (
+  <RequireAuth>
+    <RequireAdmin>
+      <Layout>
+        <AdminPage />
+      </Layout>
+    </RequireAdmin>
   </RequireAuth>
 );
 
@@ -33,6 +47,15 @@ const router = createBrowserRouter([
   {
     path: "/entries/:entryId/edit",
     element: protectedElement(<EntryEditPage />),
+  },
+  {
+    path: "/admin",
+    element: adminElement,
+    children: [
+      { index: true, element: <Navigate to="/admin/users" replace /> },
+      { path: "users", element: <UsersTab /> },
+      { path: "settings", element: <SettingsTab /> },
+    ],
   },
   { path: "*", element: <NotFoundPage /> },
 ]);
