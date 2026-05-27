@@ -4,6 +4,16 @@ A self-hosted, offline-first SOAP (Scripture, Observation, Application, Prayer) 
 
 **Status:** in development. Not yet released.
 
+> **New to self-hosting?** The [full install guide](docs/install/README.md) walks through every step on a fresh Ubuntu Server — Docker setup, configuration, first login — with screenshots. The Quick Start below assumes you've done this before.
+
+![Dashboard showing recent entries and the "On this day in previous years" panel](docs/screenshots/usage-dashboard-populated.png)
+
+![Bible reader showing John chapter 3 with the controls bar and "1 entry on this chapter" badge](docs/screenshots/usage-reader-john-3.png)
+
+![New entry form pre-filled from clicking John 3:16 in the reader, with the Scripture preview rendered](docs/screenshots/usage-entry-form-from-verse.png)
+
+![Entry detail page showing the snapshotted verse text, Observation, Application, Prayer, and tags](docs/screenshots/usage-entry-detail.png)
+
 ## Features
 
 - SOAP-method journaling with auto-pulled Scripture text
@@ -25,7 +35,7 @@ A self-hosted, offline-first SOAP (Scripture, Observation, Application, Prayer) 
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/soap-journal.git
+git clone https://github.com/kbennett2000/soap-journal.git
 cd soap-journal
 cp .env.example .env
 docker compose up -d
@@ -34,6 +44,8 @@ docker compose up -d
 Open `http://<your-server-ip>:8045` from any device on your LAN. The first user to register becomes the admin.
 
 **What you get out of the box:** on first start, the server runs migrations and loads the BSB Bible automatically. You'll be ready to journal as soon as you register the first user.
+
+For a step-by-step walkthrough — installing Docker, finding your server's IP, first login — see the [install guide](docs/install/README.md). For everything else (the reader, journaling, tags, search, calendar, admin tasks, backups) see the [usage guide](docs/usage/README.md).
 
 ## Configuration
 
@@ -64,9 +76,12 @@ Everything you care about lives in `./data` on the host. Stop the container, cop
 
 ## Troubleshooting
 
+The most common issues are covered in [`docs/install/troubleshooting.md`](docs/install/troubleshooting.md). The greatest hits:
+
 - **Port already in use** — change `PORT` in `.env` (e.g. `PORT=9090`) and `docker compose up -d`. The container always binds 8080 internally; Compose maps that to whatever host port you choose.
 - **Permission errors on `./data`** — the container runs as UID 1000. If your host UID differs and you've bind-mounted an existing `./data`, run `sudo chown -R 1000:1000 ./data` once.
 - **Viewing logs** — `docker compose logs -f` (or `docker compose logs --tail=100 soap-journal`).
+- **Forgot the admin password** — see [Forgot the admin password](docs/install/troubleshooting.md#i-forgot-the-admin-password).
 - **Want HTTPS?** v1 ships HTTP only on the assumption you're on a trusted LAN. Run a reverse proxy (Caddy, nginx, Traefik) in front of the container yourself — first-class HTTPS is a v2 topic.
 
 ## Bundled Bible
