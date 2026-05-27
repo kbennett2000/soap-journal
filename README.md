@@ -28,26 +28,46 @@ A self-hosted, offline-first SOAP (Scripture, Observation, Application, Prayer) 
 git clone https://github.com/YOUR-USERNAME/soap-journal.git
 cd soap-journal
 cp .env.example .env
-# Edit .env to set PORT and other options if you want
 docker compose up -d
 ```
 
 Open `http://<your-server-ip>:8080` from any device on your LAN. The first user to register becomes the admin.
 
+**What you get out of the box:** on first start, the server runs migrations and loads the BSB Bible automatically. You'll be ready to journal as soon as you register the first user.
+
 ## Configuration
 
 All configuration lives in `.env`:
 
-| Variable     | Default     | Description                                      |
-| ------------ | ----------- | ------------------------------------------------ |
-| `PORT`       | `8080`      | Port the server listens on                       |
-| `DATA_DIR`   | `./data`    | Where the SQLite DB and Bible files live         |
-| `SECRET_KEY` | (generated) | Session signing key; auto-generated on first run |
-| `BIND_HOST`  | `0.0.0.0`   | Interface to bind to                             |
+| Variable     | Default     | Description                                       |
+| ------------ | ----------- | ------------------------------------------------- |
+| `PORT`       | `8080`      | Host-side port published by Compose               |
+| `SECRET_KEY` | (generated) | Session signing key; auto-generated on first run  |
+| `DATA_DIR`   | `/data`     | (Advanced) data path inside the container         |
 
 Self-registration is controlled at runtime by the admin through the API
 (`PUT /api/v1/admin/settings`). On a fresh install it defaults to off; the
 first user to register becomes the admin and can flip it on for everyone else.
+
+## Updating
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Migrations run automatically on the next start.
+
+## Backups
+
+Everything you care about lives in `./data` on the host. Stop the container, copy the folder, restart. Restore by copying it back.
+
+## Troubleshooting
+
+- **Port already in use** — change `PORT` in `.env` (e.g. `PORT=9090`) and `docker compose up -d`. The container always binds 8080 internally; Compose maps it to the host.
+- **Permission errors on `./data`** — the container runs as UID 1000. If your host UID differs and you've bind-mounted an existing `./data`, run `sudo chown -R 1000:1000 ./data` once.
+- **Viewing logs** — `docker compose logs -f` (or `docker compose logs --tail=100 soap-journal`).
+- **Want HTTPS?** v1 ships HTTP only on the assumption you're on a trusted LAN. Run a reverse proxy (Caddy, nginx, Traefik) in front of the container yourself — first-class HTTPS is a v2 topic.
 
 ## Bundled Bible
 
@@ -57,7 +77,9 @@ plain-text source and the BSB's attribution / public-domain notice live in
 [`bible-sources/bsb/`](bible-sources/bsb/) — see
 [`bible-sources/bsb/NOTICE`](bible-sources/bsb/NOTICE) for details.
 
-To load the bundled BSB into your database on first install:
+The BSB is parsed and loaded into your database automatically on the
+container's first boot. To load it manually (e.g. in the non-Docker install
+path below), run:
 
 ```bash
 cd backend
@@ -81,20 +103,44 @@ Once a second translation is loaded, the side-by-side comparison view in the rea
 
 **Note on copyright:** only translations you have the legal right to redistribute should be loaded onto a publicly-accessible instance. The BSB is permissively licensed; many modern translations (ESV, NIV, NASB, etc.) are not. Loading a copyrighted translation onto a server you control for personal use is between you and the publisher.
 
-## Backing Up Your Data
+## Manual install (without Docker)
 
-Everything you care about is in the `DATA_DIR` (default `./data`). Copy that folder to back up. Restore by copying it back.
+Docker is the recommended path. If you can't or won't run Docker, you can
+install the pieces directly:
+
+```bash
+# Backend
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+python -m soap_journal.parsers.bsb ../bible-sources/bsb/bsb.txt --out /tmp/bsb.json
+python -m soap_journal.cli load-translation /tmp/bsb.json
+
+# Frontend
+cd ../frontend
+npm ci
+npm run build
+
+# Run (backend serves the built frontend)
+cd ../backend
+FRONTEND_DIST_DIR=../frontend/dist DATA_DIR=./data \
+    uvicorn soap_journal.main:create_app --factory --host 0.0.0.0 --port 8080
+```
 
 ## Development
 
 See `SPEC.md` for the full specification and `CLAUDE.md` for engineering conventions.
 
 ```bash
-# Backend
+# Backend (auto-reload, no static frontend mount in this mode)
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn soap_journal.main:app --reload --port 8080
+pip install -r requirements-dev.txt
+alembic upgrade head
+uvicorn soap_journal.main:create_app --factory --reload --port 8080
 
 # Frontend (separate terminal)
 cd frontend
