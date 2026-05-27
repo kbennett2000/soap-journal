@@ -163,6 +163,33 @@ def test_nkjv_new_aliases_resolve_correctly() -> None:
         assert book.name == name, f"{abbr} -> {book.name}, expected {name}"
 
 
+def test_all_17_nlt_ordinal_aliases_resolve() -> None:
+    expected = {
+        "1st Samuel": "1 Samuel",
+        "2nd Samuel": "2 Samuel",
+        "1st Kings": "1 Kings",
+        "2nd Kings": "2 Kings",
+        "1st Chronicles": "1 Chronicles",
+        "2nd Chronicles": "2 Chronicles",
+        "1st Corinthians": "1 Corinthians",
+        "2nd Corinthians": "2 Corinthians",
+        "1st Thessalonians": "1 Thessalonians",
+        "2nd Thessalonians": "2 Thessalonians",
+        "1st Timothy": "1 Timothy",
+        "2nd Timothy": "2 Timothy",
+        "1st Peter": "1 Peter",
+        "2nd Peter": "2 Peter",
+        "1st John": "1 John",
+        "2nd John": "2 John",
+        "3rd John": "3 John",
+    }
+    assert len(expected) == 17
+    for alias, name in expected.items():
+        book = get_book_by_name(alias)
+        assert book is not None, f"ordinal alias {alias!r} should resolve"
+        assert book.name == name, f"{alias} -> {book.name}, expected {name}"
+
+
 def test_book_model_is_frozen() -> None:
     book = ALL_BOOKS[0]
     try:
