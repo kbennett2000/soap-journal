@@ -25,7 +25,7 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from soap_journal.api.deps import get_current_user
@@ -38,8 +38,12 @@ from soap_journal.core.references import (
 )
 from soap_journal.db.models.book import Book
 from soap_journal.db.models.chapter import Chapter
+from soap_journal.db.models.entry import Entry
+from soap_journal.db.models.entry_scripture_verse import EntryScriptureVerse
+from soap_journal.db.models.entry_tag import EntryTag
 from soap_journal.db.models.footnote import Footnote
 from soap_journal.db.models.heading import Heading
+from soap_journal.db.models.tag import Tag
 from soap_journal.db.models.translation import Translation
 from soap_journal.db.models.user import User
 from soap_journal.db.models.verse import Verse
@@ -50,6 +54,7 @@ from soap_journal.schemas.bible import (
     ChapterResponse,
     FootnoteResponse,
     HeadingResponse,
+    PassageEntriesResponse,
     ResolvedReference,
     ResolvedReferenceResponse,
     TranslationDetailResponse,
@@ -57,6 +62,7 @@ from soap_journal.schemas.bible import (
     TranslationSummary,
     VerseResponse,
 )
+from soap_journal.schemas.entries import EntryResponse, EntryTagSummary
 
 router = APIRouter(
     prefix="/bible",
@@ -465,4 +471,217 @@ async def resolve_reference(
             end_verse=end,
         ),
         verses=selected,
+    )
+
+
+# ---- passage -> entries (cross-references) --------------------------------
+
+
+@router.get("/passages/entries", response_model=PassageEntriesResponse)
+async def passage_entries(
+    ref: str,
+    translation: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> PassageEntriesResponse:
+    """Return the current user's entries whose verse linkage overlaps the
+    requested passage.
+
+    Query budget: 4 SELECTs.
+      1. Translation by code (or default).
+      2. One LEFT-JOINed query covering: book + correlated chapter_count
+         + the requested chapter + every verse in it. NULL columns
+         disambiguate "book missing" vs "chapter missing" without
+         separate lookups.
+      3. Entries (current user only) joined with translations.code.
+      4. Tags for the matching entries, batched IN(...).
+
+    Cross-translation matching is intentionally out of scope: verse_id
+    differs across translations, so an entry created against (say) the
+    NKJV won't match a BSB query even if the book/chapter/verse tuple
+    is the same. See backend/README.md "Passage cross-references".
+    """
+    try:
+        parsed: ParsedReference = parse_reference_or_raise(ref)
+    except ReferenceParseError as exc:
+        raise_http(status.HTTP_400_BAD_REQUEST, ErrorCode.INVALID_REFERENCE, str(exc))
+
+    # Query 1: translation row (with TRANSLATION_NOT_FOUND specificity).
+    translation_row = (
+        await _get_translation_by_code(db, translation)
+        if translation is not None
+        else await _default_translation(db)
+    )
+
+    canon_book = get_book_by_name(parsed.book.name)
+    assert canon_book is not None  # parser already resolved it
+
+    # Query 2: combined book + chapter + verses + chapter_count.
+    chapter_count_subq = (
+        select(func.count(Chapter.id))
+        .where(Chapter.book_id == Book.id)
+        .correlate(Book)
+        .scalar_subquery()
+    )
+    combined_rows = (
+        await db.execute(
+            select(
+                Book.id.label("book_id"),
+                Book.name.label("book_name"),
+                Book.abbreviation.label("book_abbrev"),
+                Book.order_index.label("book_order"),
+                chapter_count_subq.label("chapter_count"),
+                Chapter.id.label("chapter_id"),
+                Verse.id.label("verse_id"),
+                Verse.number.label("verse_number"),
+            )
+            .select_from(Book)
+            .outerjoin(
+                Chapter,
+                and_(Chapter.book_id == Book.id, Chapter.number == parsed.chapter),
+            )
+            .outerjoin(Verse, Verse.chapter_id == Chapter.id)
+            .where(
+                Book.translation_id == translation_row.id,
+                Book.name == canon_book.name,
+            )
+            .order_by(Verse.number.asc())
+        )
+    ).all()
+
+    if not combined_rows:
+        raise_http(
+            status.HTTP_404_NOT_FOUND,
+            ErrorCode.BOOK_NOT_FOUND,
+            f"{canon_book.name!r} is not loaded for translation {translation_row.code!r}",
+        )
+    first = combined_rows[0]
+    if first.chapter_id is None:
+        raise_http(
+            status.HTTP_404_NOT_FOUND,
+            ErrorCode.CHAPTER_NOT_FOUND,
+            f"chapter {parsed.chapter} not found in {canon_book.name}",
+        )
+    if first.verse_id is None:
+        # Chapter exists but has zero verses — shouldn't happen for BSB,
+        # but the range check below would deadlock without a guard.
+        raise_http(
+            status.HTTP_404_NOT_FOUND,
+            ErrorCode.CHAPTER_NOT_FOUND,
+            f"chapter {parsed.chapter} has no verses",
+        )
+
+    last_verse_number = combined_rows[-1].verse_number
+    if parsed.start_verse is None:
+        start, end = 1, last_verse_number
+    else:
+        start = parsed.start_verse
+        end = parsed.end_verse if parsed.end_verse is not None else start
+        if start > last_verse_number or end > last_verse_number:
+            raise_http(
+                status.HTTP_404_NOT_FOUND,
+                ErrorCode.REFERENCE_OUT_OF_RANGE,
+                f"chapter has {last_verse_number} verses; "
+                f"reference asked for {start}-{end}",
+            )
+
+    target_verse_ids = [
+        row.verse_id for row in combined_rows if start <= row.verse_number <= end
+    ]
+    book_summary = BookSummary(
+        name=first.book_name,
+        abbreviation=first.book_abbrev,
+        order_index=first.book_order,
+        testament=_testament_for(first.book_name),
+        chapter_count=int(first.chapter_count),
+    )
+
+    if not target_verse_ids:
+        # Defensive; shouldn't happen given the range check above.
+        return PassageEntriesResponse(
+            reference=ResolvedReference(
+                canonical_string=parsed.canonical_string,
+                translation_code=translation_row.code,
+                book=book_summary,
+                chapter_number=parsed.chapter,
+                start_verse=start,
+                end_verse=end,
+            ),
+            count=0,
+            entries=[],
+        )
+
+    # Query 3: entries (this user only) with translations.code joined.
+    page_rows = (
+        await db.execute(
+            select(Entry, Translation.code)
+            .join(Translation, Translation.id == Entry.scripture_translation_id)
+            .where(
+                Entry.user_id == user.id,
+                Entry.id.in_(
+                    select(EntryScriptureVerse.entry_id)
+                    .where(EntryScriptureVerse.verse_id.in_(target_verse_ids))
+                    .distinct()
+                ),
+            )
+            .order_by(
+                Entry.entry_date.desc(),
+                Entry.created_at.desc(),
+                Entry.id.desc(),
+            )
+        )
+    ).all()
+    entry_rows = [row[0] for row in page_rows]
+    translation_codes = {row[0].scripture_translation_id: row[1] for row in page_rows}
+
+    # Batch tags for the page.
+    entries: list[EntryResponse] = []
+    if entry_rows:
+        entry_ids = [e.id for e in entry_rows]
+        tag_rows = (
+            await db.execute(
+                select(EntryTag.entry_id, Tag.id, Tag.name)
+                .join(Tag, Tag.id == EntryTag.tag_id)
+                .where(EntryTag.entry_id.in_(entry_ids))
+                .order_by(EntryTag.entry_id, func.lower(Tag.name).asc())
+            )
+        ).all()
+        tags_by_entry: dict[int, list[EntryTagSummary]] = {}
+        for entry_id, tag_id, name in tag_rows:
+            tags_by_entry.setdefault(entry_id, []).append(
+                EntryTagSummary(id=tag_id, name=name)
+            )
+
+        for entry in entry_rows:
+            title = (entry.title or "").strip() or None
+            display_title = title if title else entry.scripture_ref
+            entries.append(
+                EntryResponse(
+                    id=entry.id,
+                    title=title,
+                    display_title=display_title,
+                    entry_date=entry.entry_date,
+                    scripture_ref=entry.scripture_ref,
+                    translation_code=translation_codes[entry.scripture_translation_id],
+                    scripture_text=entry.scripture_text,
+                    observation=entry.observation,
+                    application=entry.application,
+                    prayer=entry.prayer,
+                    tags=tags_by_entry.get(entry.id, []),
+                    created_at=entry.created_at,
+                    updated_at=entry.updated_at,
+                )
+            )
+
+    return PassageEntriesResponse(
+        reference=ResolvedReference(
+            canonical_string=parsed.canonical_string,
+            translation_code=translation_row.code,
+            book=book_summary,
+            chapter_number=parsed.chapter,
+            start_verse=start,
+            end_verse=end,
+        ),
+        count=len(entries),
+        entries=entries,
     )
