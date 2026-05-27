@@ -1,27 +1,46 @@
 import { Link, useSearchParams } from "react-router-dom";
 
+import { AppliedFilterChips, type FilterKey } from "@/components/AppliedFilterChips";
 import { EntryCard } from "@/components/EntryCard";
+import { FilterBar, type FilterValues } from "@/components/FilterBar";
 import { useEntryList } from "@/hooks/useEntries";
+import { ApiError } from "@/lib/apiError";
+import type { AppliedFilters } from "@/types/api";
 
 const DEFAULT_LIMIT = 20;
 
 export function EntryListPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
+
   const limit = clampInt(searchParams.get("limit"), DEFAULT_LIMIT, 1, 100);
   const offset = clampInt(searchParams.get("offset"), 0, 0, Number.MAX_SAFE_INTEGER);
   const order = searchParams.get("order") === "oldest" ? "oldest" : "newest";
+  const q = searchParams.get("q") ?? "";
+  const book = searchParams.get("book") ?? "";
+  const tag = searchParams.get("tag") ?? "";
+  const fromDate = searchParams.get("from_date") ?? "";
+  const toDate = searchParams.get("to_date") ?? "";
 
-  const query = useEntryList({ limit, offset, order });
+  const query = useEntryList({
+    limit,
+    offset,
+    order,
+    q: q || undefined,
+    book: book || undefined,
+    tag: tag || undefined,
+    from_date: fromDate || undefined,
+    to_date: toDate || undefined,
+  });
 
-  function setParam(key: string, value: string | null): void {
+  function updateParams(
+    update: (next: URLSearchParams) => void,
+    options: { resetOffset?: boolean } = {},
+  ): void {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        if (value === null || value === "") {
-          next.delete(key);
-        } else {
-          next.set(key, value);
-        }
+        update(next);
+        if (options.resetOffset) next.delete("offset");
         return next;
       },
       { replace: false },
@@ -29,30 +48,82 @@ export function EntryListPage(): JSX.Element {
   }
 
   function setOffset(nextOffset: number): void {
-    setParam("offset", nextOffset > 0 ? String(nextOffset) : null);
+    updateParams((next) => {
+      if (nextOffset > 0) next.set("offset", String(nextOffset));
+      else next.delete("offset");
+    });
   }
 
   function setOrder(nextOrder: "newest" | "oldest"): void {
-    // Update both keys in a single setSearchParams call. Calling
-    // setParam twice in a row doesn't batch — the second call sees the
-    // pre-update searchParams and clobbers the first update.
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (nextOrder === "oldest") {
-          next.set("order", "oldest");
-        } else {
-          next.delete("order");
-        }
-        next.delete("offset");
-        return next;
+    updateParams(
+      (next) => {
+        if (nextOrder === "oldest") next.set("order", "oldest");
+        else next.delete("order");
       },
-      { replace: false },
+      { resetOffset: true },
     );
   }
 
+  function applyFilters(filterValues: FilterValues): void {
+    updateParams(
+      (next) => {
+        setOrDelete(next, "q", filterValues.q);
+        setOrDelete(next, "book", filterValues.book);
+        setOrDelete(next, "tag", filterValues.tag);
+        setOrDelete(next, "from_date", filterValues.fromDate);
+        setOrDelete(next, "to_date", filterValues.toDate);
+      },
+      { resetOffset: true },
+    );
+  }
+
+  function removeFilter(key: FilterKey): void {
+    updateParams(
+      (next) => {
+        next.delete(key);
+      },
+      { resetOffset: true },
+    );
+  }
+
+  function clearFilters(): void {
+    updateParams(
+      (next) => {
+        next.delete("q");
+        next.delete("book");
+        next.delete("tag");
+        next.delete("from_date");
+        next.delete("to_date");
+      },
+      { resetOffset: true },
+    );
+  }
+
+  const filterValues: FilterValues = {
+    q,
+    book,
+    tag,
+    fromDate,
+    toDate,
+  };
+
+  const hasAnyFilter = Boolean(q || book || tag || fromDate || toDate);
+  const apiError = query.error instanceof ApiError ? query.error : null;
+  const dateRangeError = apiError?.code === "INVALID_DATE_RANGE" ? apiError.message : null;
+  const bookError = apiError?.code === "INVALID_BOOK" ? apiError.message : null;
+
   const total = query.data?.total ?? 0;
   const entries = query.data?.entries ?? [];
+  // Server always echoes applied_filters back; default to "all null" so
+  // the chip code stays simple while data is loading.
+  const appliedFilters: AppliedFilters =
+    query.data?.applied_filters ?? {
+      q: null,
+      book: null,
+      tag: null,
+      from_date: null,
+      to_date: null,
+    };
   const startNum = entries.length === 0 ? 0 : offset + 1;
   const endNum = offset + entries.length;
   const hasPrev = offset > 0;
@@ -69,6 +140,23 @@ export function EntryListPage(): JSX.Element {
           + New entry
         </Link>
       </header>
+
+      <FilterBar
+        values={filterValues}
+        onChange={applyFilters}
+        dateRangeError={dateRangeError}
+      />
+
+      <AppliedFilterChips applied={appliedFilters} onRemove={removeFilter} />
+
+      {bookError && (
+        <div
+          role="alert"
+          className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200"
+        >
+          {bookError}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 text-sm">
         <span className="text-slate-600 dark:text-slate-300">Order:</span>
@@ -99,31 +187,51 @@ export function EntryListPage(): JSX.Element {
         </div>
       )}
 
-      {query.isError && (
+      {query.isError && !dateRangeError && !bookError && (
         <div
           role="alert"
           className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200"
         >
-          Couldn't load your entries.
+          {query.error instanceof ApiError
+            ? query.error.message
+            : "Couldn't load your entries."}
         </div>
       )}
 
-      {query.data && entries.length === 0 && (
-        <div
-          data-testid="entries-empty"
-          className="rounded-md border border-dashed border-slate-300 bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900"
-        >
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            No entries yet. Start a SOAP journal whenever a passage strikes you.
-          </p>
-          <Link
-            to="/entries/new"
-            className="mt-3 inline-flex h-9 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white shadow-sm hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+      {query.data &&
+        entries.length === 0 &&
+        (hasAnyFilter ? (
+          <div
+            data-testid="entries-filtered-empty"
+            className="rounded-md border border-dashed border-slate-300 bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900"
           >
-            Create your first entry
-          </Link>
-        </div>
-      )}
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              No entries match these filters.
+            </p>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="mt-3 inline-flex h-9 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white shadow-sm hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div
+            data-testid="entries-empty"
+            className="rounded-md border border-dashed border-slate-300 bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900"
+          >
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              No entries yet. Start a SOAP journal whenever a passage strikes you.
+            </p>
+            <Link
+              to="/entries/new"
+              className="mt-3 inline-flex h-9 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white shadow-sm hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+            >
+              Create your first entry
+            </Link>
+          </div>
+        ))}
 
       {query.data && entries.length > 0 && (
         <div className="space-y-3">
@@ -178,4 +286,9 @@ function clampInt(
   if (n < min) return min;
   if (n > max) return max;
   return n;
+}
+
+function setOrDelete(params: URLSearchParams, key: string, value: string): void {
+  if (value && value.trim().length > 0) params.set(key, value);
+  else params.delete(key);
 }

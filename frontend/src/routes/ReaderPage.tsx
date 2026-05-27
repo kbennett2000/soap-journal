@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-r
 import { BookPicker } from "@/components/reader/BookPicker";
 import { ChapterPicker } from "@/components/reader/ChapterPicker";
 import { ChapterContent } from "@/components/reader/ChapterContent";
+import { PassageEntriesBadge } from "@/components/PassageEntriesBadge";
 import { JumpBar } from "@/components/reader/JumpBar";
 import { SettingsPopover } from "@/components/reader/SettingsPopover";
 import { useChapter, useTranslationDetail, useTranslations } from "@/hooks/useBible";
@@ -220,6 +221,16 @@ function ReaderInner({
           onRetry={() => {
             void chapterQuery.refetch();
           }}
+        />
+      )}
+
+      {chapterQuery.data && (
+        // `key` ensures the badge's "panel expanded?" state resets when
+        // the user navigates to a different chapter (per the spec).
+        <PassageEntriesBadge
+          key={`${translationCode}/${bookName}/${chapterNumber}`}
+          passageRef={`${bookName} ${chapterNumber}`}
+          translationCode={translationCode}
         />
       )}
 

@@ -176,3 +176,28 @@ export interface TagListResponse {
 export interface TagAutocompleteResponse {
   tags: TagSummary[];
 }
+
+// ---- Retrieval: calendar, on-this-day, passage cross-references -----------
+
+export interface CalendarDay {
+  entry_date: string; // ISO YYYY-MM-DD
+  count: number;
+}
+
+export interface CalendarResponse {
+  year: number;
+  month: number;
+  days: CalendarDay[];
+  total: number;
+}
+
+export interface OnThisDayResponse {
+  target_date: string;
+  entries: EntryResponse[];
+}
+
+export interface PassageEntriesResponse {
+  reference: ResolvedReference;
+  count: number;
+  entries: EntryResponse[];
+}

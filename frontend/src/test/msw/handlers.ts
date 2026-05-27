@@ -6,8 +6,11 @@ import {
   makeTranslationList,
 } from "@/test/utils/bible";
 import {
+  makeCalendarResponse,
   makeEntryEnvelope,
   makeEntryList,
+  makeOnThisDayResponse,
+  makePassageEntriesResponse,
   makeTagList,
 } from "@/test/utils/entries";
 import { makeUser } from "@/test/utils/factories";
@@ -123,6 +126,31 @@ export const tagsAutocompleteHandler = http.get(
   () => HttpResponse.json({ tags: [] }, { status: 200 }),
 );
 
+// ---- retrieval: calendar, on-this-day, passage entries --------------------
+
+export const calendarHandler = http.get(
+  "/api/v1/entries/calendar",
+  ({ request }) => {
+    const url = new URL(request.url);
+    const year = Number(url.searchParams.get("year"));
+    const month = Number(url.searchParams.get("month"));
+    return HttpResponse.json(makeCalendarResponse({ year, month }), { status: 200 });
+  },
+);
+
+export const onThisDayHandler = http.get("/api/v1/entries/on-this-day", () => {
+  return HttpResponse.json(makeOnThisDayResponse(), { status: 200 });
+});
+
+export const passageEntriesHandler = http.get(
+  "/api/v1/bible/passages/entries",
+  () => HttpResponse.json(makePassageEntriesResponse(), { status: 200 }),
+);
+
+// Order matters: MSW matches handlers in the order they're registered.
+// `/entries/calendar` and `/entries/on-this-day` must come BEFORE the
+// parameterized `/entries/:entryId` detail handler, otherwise the
+// detail handler would swallow them with entryId="calendar".
 export const defaultHandlers = [
   meHandler,
   loginHandler,
@@ -132,6 +160,9 @@ export const defaultHandlers = [
   translationDetailHandler,
   chapterHandler,
   resolveHandler,
+  passageEntriesHandler,
+  calendarHandler,
+  onThisDayHandler,
   entriesListHandler,
   entryDetailHandler,
   createEntryHandler,

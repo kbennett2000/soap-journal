@@ -96,11 +96,90 @@ describe("EntryListPage", () => {
     const user = userEvent.setup();
     renderList();
     await screen.findByText("An entry");
-    // Initial render fetches newest (the route default).
-    expect(lastOrder).toBe("newest");
+    // The default "newest" is implicit — useEntryList strips defaults
+    // from the query so the URL only carries meaningful params.
+    expect(lastOrder).toBeNull();
 
     await user.click(screen.getByRole("button", { name: /oldest first/i }));
 
     await waitFor(() => expect(lastOrder).toBe("oldest"));
+  });
+
+  it("URL params drive the request", async () => {
+    let lastRequest: { q: string | null; book: string | null } | null = null;
+    server.use(
+      http.get("/api/v1/entries", ({ request }) => {
+        const url = new URL(request.url);
+        lastRequest = {
+          q: url.searchParams.get("q"),
+          book: url.searchParams.get("book"),
+        };
+        return HttpResponse.json(
+          makeEntryList(
+            [makeEntry({ display_title: "Match" })],
+            { total: 1 },
+            { q: "love", book: "John" },
+          ),
+          { status: 200 },
+        );
+      }),
+    );
+
+    renderList(["/entries?q=love&book=John"]);
+
+    await screen.findByText("Match");
+    expect(lastRequest).toEqual({ q: "love", book: "John" });
+    // Chips reflect the applied filters.
+    expect(screen.getByTestId("applied-filter-chips")).toHaveTextContent("love");
+    expect(screen.getByTestId("applied-filter-chips")).toHaveTextContent("John");
+  });
+
+  it("applying a filter resets offset to 0", async () => {
+    let lastOffset: string | null = null;
+    server.use(
+      http.get("/api/v1/entries", ({ request }) => {
+        const url = new URL(request.url);
+        lastOffset = url.searchParams.get("offset");
+        return HttpResponse.json(makeEntryList([makeEntry()]), { status: 200 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderList(["/entries?offset=40"]);
+    await screen.findByRole("heading", { name: /your entries/i });
+
+    // Initial render carries offset=40.
+    await waitFor(() => expect(lastOffset).toBe("40"));
+
+    await user.selectOptions(screen.getByLabelText(/^book$/i), "John");
+
+    // After filter change, offset resets (param dropped from URL).
+    await waitFor(() => expect(lastOffset).toBeNull());
+  });
+
+  it("filtered empty result shows the no-matches state with a Clear filters button", async () => {
+    server.use(
+      http.get("/api/v1/entries", () =>
+        HttpResponse.json(
+          makeEntryList([], { total: 0 }, { q: "nope" }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderList(["/entries?q=nope"]);
+
+    expect(await screen.findByTestId("entries-filtered-empty")).toBeInTheDocument();
+
+    // Clicking "Clear filters" empties the URL params.
+    await user.click(screen.getByRole("button", { name: /clear filters/i }));
+
+    await waitFor(() => {
+      // After clearing, the page falls back to the no-entries-at-all state
+      // (default handler returns one entry, so we expect entries to render).
+      // Pragmatic check: the filtered-empty state is gone.
+      expect(screen.queryByTestId("entries-filtered-empty")).not.toBeInTheDocument();
+    });
   });
 });

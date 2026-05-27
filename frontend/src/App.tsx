@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import { Layout } from "@/components/Layout";
 import { RequireAuth } from "@/components/RequireAuth";
+import { CalendarPage } from "@/routes/CalendarPage";
 import { DashboardPage } from "@/routes/DashboardPage";
 import { EntryDetailPage } from "@/routes/EntryDetailPage";
 import { EntryEditPage } from "@/routes/EntryEditPage";
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
     path: "/read/:translationCode/:bookName/:chapterNumber",
     element: protectedElement(<ReaderPage />),
   },
+  { path: "/calendar", element: protectedElement(<CalendarPage />) },
   { path: "/entries", element: protectedElement(<EntryListPage />) },
   { path: "/entries/new", element: protectedElement(<EntryNewPage />) },
   { path: "/entries/:entryId", element: protectedElement(<EntryDetailPage />) },
