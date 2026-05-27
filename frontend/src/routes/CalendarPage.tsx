@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { CalendarGrid } from "@/components/CalendarGrid";
 import { useCalendar } from "@/hooks/useEntries";
+import { ApiError } from "@/lib/apiError";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -92,6 +93,27 @@ export function CalendarPage(): JSX.Element {
           data-testid="calendar-loading"
           className="h-72 animate-pulse rounded-md bg-slate-100 dark:bg-slate-800"
         />
+      ) : calendar.isError ? (
+        <div
+          role="alert"
+          data-testid="calendar-error"
+          className="space-y-3 rounded-md border border-rose-300 bg-rose-50 px-3 py-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200"
+        >
+          <p>
+            {calendar.error instanceof ApiError
+              ? calendar.error.message
+              : "Couldn't load this month."}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              void calendar.refetch();
+            }}
+            className="inline-flex h-8 items-center rounded-md bg-slate-900 px-3 text-xs font-medium text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
+          >
+            Try again
+          </button>
+        </div>
       ) : (
         <CalendarGrid
           year={year}

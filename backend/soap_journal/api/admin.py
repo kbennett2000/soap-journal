@@ -36,9 +36,7 @@ async def _get_user_or_404(db: AsyncSession, user_id: int) -> User:
 
 
 async def _count_admins(db: AsyncSession) -> int:
-    result = await db.execute(
-        select(func.count()).select_from(User).where(User.is_admin.is_(True))
-    )
+    result = await db.execute(select(func.count()).select_from(User).where(User.is_admin.is_(True)))
     return int(result.scalar_one())
 
 
@@ -62,9 +60,7 @@ async def list_users(db: AsyncSession = Depends(get_db)) -> UserListResponse:
     response_model=AuthEnvelope,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_user(
-    body: UserCreateRequest, db: AsyncSession = Depends(get_db)
-) -> AuthEnvelope:
+async def create_user(body: UserCreateRequest, db: AsyncSession = Depends(get_db)) -> AuthEnvelope:
     username_lower = body.username.lower()
     if await _username_taken(db, username_lower):
         raise_http(status.HTTP_409_CONFLICT, ErrorCode.USERNAME_TAKEN)
@@ -81,9 +77,7 @@ async def create_user(
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(
-    user_id: int, db: AsyncSession = Depends(get_db)
-) -> Response:
+async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)) -> Response:
     user = await _get_user_or_404(db, user_id)
 
     if user.is_admin and await _count_admins(db) <= 1:
@@ -115,9 +109,7 @@ async def reset_password(
 
 
 @router.post("/users/{user_id}/promote", response_model=AuthEnvelope)
-async def promote_user(
-    user_id: int, db: AsyncSession = Depends(get_db)
-) -> AuthEnvelope:
+async def promote_user(user_id: int, db: AsyncSession = Depends(get_db)) -> AuthEnvelope:
     user = await _get_user_or_404(db, user_id)
     if not user.is_admin:
         user.is_admin = True
@@ -127,9 +119,7 @@ async def promote_user(
 
 
 @router.post("/users/{user_id}/demote", response_model=AuthEnvelope)
-async def demote_user(
-    user_id: int, db: AsyncSession = Depends(get_db)
-) -> AuthEnvelope:
+async def demote_user(user_id: int, db: AsyncSession = Depends(get_db)) -> AuthEnvelope:
     user = await _get_user_or_404(db, user_id)
 
     if user.is_admin:

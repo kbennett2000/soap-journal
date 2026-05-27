@@ -148,6 +148,16 @@ npm install
 npm run dev
 ```
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for development setup, branch
+conventions, and the project's philosophy on scope.
+
+## Changelog
+
+Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
+
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [`LICENSE`](LICENSE). Third-party software notices live in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

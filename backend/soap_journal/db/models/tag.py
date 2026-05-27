@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Computed, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -7,14 +7,12 @@ from soap_journal.db.base import Base
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Tag(Base):
     __tablename__ = "tags"
-    __table_args__ = (
-        UniqueConstraint("user_id", "name_lower", name="uq_tags_user_name_lower"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "name_lower", name="uq_tags_user_name_lower"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(

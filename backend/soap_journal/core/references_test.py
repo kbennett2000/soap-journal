@@ -10,7 +10,6 @@ from soap_journal.core.references import (
     parse_reference_or_raise,
 )
 
-
 # ---- accepted forms --------------------------------------------------------
 
 
@@ -179,9 +178,7 @@ def test_multiple_references_rejected_comma() -> None:
 
 
 def test_cross_chapter_range_rejected_via_strict_parser() -> None:
-    with pytest.raises(
-        ReferenceParseError, match="cross-chapter ranges are not supported"
-    ):
+    with pytest.raises(ReferenceParseError, match="cross-chapter ranges are not supported"):
         parse_reference_or_raise("John 3:30-4:2")
 
 

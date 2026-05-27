@@ -49,6 +49,35 @@ aliases and plugins, one fewer file to maintain. The `test:` block
 is type-aware via `/// <reference types="vitest/config" />` at the
 top of the file.
 
+## Conventions
+
+A few UI conventions used across the app — pick the one that already
+fits when you add new code rather than inventing a third pattern.
+
+**Loading.** Three patterns, used in this order of preference:
+
+- **Skeleton bars** — `animate-pulse rounded bg-slate-100 dark:bg-slate-800`
+  for content-shaped placeholders (entry list rows, chapter lines,
+  dashboard cards, calendar grid, admin tables). This is the default.
+- **Inline "Loading…"** — for tiny in-place spinners (e.g. an
+  autocomplete dropdown). Used sparingly.
+- **Full-page centered spinner** — only for the very first auth-bootstrap
+  paint (`useAuth.isLoading`). Don't use it inside a route.
+
+**Errors.** Inline alert blocks, `border-rose-300 bg-rose-50` (and dark
+variants), `role="alert"`. Show the API message if it's an `ApiError`;
+otherwise fall back to a friendly default. Where useful, add a "Try
+again" button or a link back to a safe page. Render the error in the
+*section* that failed; never let one failed query take down a whole
+page.
+
+**Empty states.** Dashed-border card with a one-line explanation and a
+CTA where it makes sense (`border-dashed border-slate-300`).
+
+**Top-level safety net.** `<ErrorBoundary>` wraps the router in
+`main.tsx`, so a render-time throw lands on a "Something went wrong"
+page instead of a blank screen.
+
 ## Preview server caveat
 
 `vite preview` serves the built bundle on a static server with **no

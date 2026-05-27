@@ -22,9 +22,7 @@ async def _resolve_user(request: Request, db: AsyncSession) -> User | None:
     return user
 
 
-async def get_current_user(
-    request: Request, db: AsyncSession = Depends(get_db)
-) -> User:
+async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)) -> User:
     user = await _resolve_user(request, db)
     if user is None:
         raise_http(401, ErrorCode.NOT_AUTHENTICATED)

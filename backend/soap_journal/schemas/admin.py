@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
-from soap_journal.schemas.auth import PasswordStr, UserResponse, UsernameStr
+from soap_journal.schemas.auth import PasswordStr, UsernameStr, UserResponse
 
 
 class UserCreateRequest(BaseModel):

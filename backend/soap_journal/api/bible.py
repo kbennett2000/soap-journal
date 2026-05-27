@@ -29,7 +29,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from soap_journal.api.deps import get_current_user
-from soap_journal.core.bible.books import ALL_BOOKS, get_book_by_name
+from soap_journal.core.bible.books import get_book_by_name
 from soap_journal.core.errors import ErrorCode, raise_http
 from soap_journal.core.references import (
     ParsedReference,
@@ -106,9 +106,7 @@ async def _get_translation_by_code(db: AsyncSession, code: str) -> Translation:
     return translation
 
 
-async def _resolve_book(
-    db: AsyncSession, translation_id: int, book_name_input: str
-) -> Book:
+async def _resolve_book(db: AsyncSession, translation_id: int, book_name_input: str) -> Book:
     """Resolve a user-supplied book name (any alias) to its DB row in this
     translation. 404s on either an unrecognized name or a translation that
     doesn't have the book loaded.
@@ -121,9 +119,7 @@ async def _resolve_book(
             f"unknown book name: {book_name_input!r}",
         )
     result = await db.execute(
-        select(Book).where(
-            Book.translation_id == translation_id, Book.name == canon.name
-        )
+        select(Book).where(Book.translation_id == translation_id, Book.name == canon.name)
     )
     book = result.scalar_one_or_none()
     if book is None:
@@ -135,13 +131,9 @@ async def _resolve_book(
     return book
 
 
-async def _get_chapter(
-    db: AsyncSession, book_id: int, chapter_number: int
-) -> Chapter:
+async def _get_chapter(db: AsyncSession, book_id: int, chapter_number: int) -> Chapter:
     result = await db.execute(
-        select(Chapter).where(
-            Chapter.book_id == book_id, Chapter.number == chapter_number
-        )
+        select(Chapter).where(Chapter.book_id == book_id, Chapter.number == chapter_number)
     )
     chapter = result.scalar_one_or_none()
     if chapter is None:
@@ -153,16 +145,12 @@ async def _get_chapter(
     return chapter
 
 
-async def _verses_with_footnotes(
-    db: AsyncSession, chapter_id: int
-) -> list[VerseResponse]:
+async def _verses_with_footnotes(db: AsyncSession, chapter_id: int) -> list[VerseResponse]:
     """Load all verses for a chapter + group their footnotes in 2 queries."""
     verse_rows = (
         (
             await db.execute(
-                select(Verse)
-                .where(Verse.chapter_id == chapter_id)
-                .order_by(Verse.number.asc())
+                select(Verse).where(Verse.chapter_id == chapter_id).order_by(Verse.number.asc())
             )
         )
         .scalars()
@@ -175,9 +163,7 @@ async def _verses_with_footnotes(
     footnote_rows = (
         (
             await db.execute(
-                select(Footnote)
-                .where(Footnote.verse_id.in_(verse_ids))
-                .order_by(Footnote.id.asc())
+                select(Footnote).where(Footnote.verse_id.in_(verse_ids)).order_by(Footnote.id.asc())
             )
         )
         .scalars()
@@ -216,13 +202,9 @@ async def _headings(db: AsyncSession, chapter_id: int) -> list[HeadingResponse]:
     return [HeadingResponse.model_validate(r) for r in rows]
 
 
-async def _book_with_chapter_count(
-    db: AsyncSession, book: Book
-) -> BookSummary:
+async def _book_with_chapter_count(db: AsyncSession, book: Book) -> BookSummary:
     count = (
-        await db.execute(
-            select(func.count(Chapter.id)).where(Chapter.book_id == book.id)
-        )
+        await db.execute(select(func.count(Chapter.id)).where(Chapter.book_id == book.id))
     ).scalar_one()
     return BookSummary(
         name=book.name,
@@ -254,9 +236,7 @@ async def _previous_pointer(
     if prev_book is None:
         return None
     last_chapter = (
-        await db.execute(
-            select(func.max(Chapter.number)).where(Chapter.book_id == prev_book.id)
-        )
+        await db.execute(select(func.max(Chapter.number)).where(Chapter.book_id == prev_book.id))
     ).scalar_one()
     if last_chapter is None:
         return None
@@ -324,17 +304,13 @@ async def list_translations(
     rows = (
         (
             await db.execute(
-                select(Translation).order_by(
-                    Translation.loaded_at.asc(), Translation.id.asc()
-                )
+                select(Translation).order_by(Translation.loaded_at.asc(), Translation.id.asc())
             )
         )
         .scalars()
         .all()
     )
-    return TranslationListResponse(
-        translations=[_translation_to_summary(t) for t in rows]
-    )
+    return TranslationListResponse(translations=[_translation_to_summary(t) for t in rows])
 
 
 @router.get("/translations/{code}", response_model=TranslationDetailResponse)
@@ -454,8 +430,7 @@ async def resolve_reference(
             raise_http(
                 status.HTTP_404_NOT_FOUND,
                 ErrorCode.REFERENCE_OUT_OF_RANGE,
-                f"chapter has {last_verse_number} verses; "
-                f"reference asked for {start}-{end}",
+                f"chapter has {last_verse_number} verses; reference asked for {start}-{end}",
             )
 
     selected = [v for v in all_verses if start <= v.number <= end]
@@ -581,13 +556,10 @@ async def passage_entries(
             raise_http(
                 status.HTTP_404_NOT_FOUND,
                 ErrorCode.REFERENCE_OUT_OF_RANGE,
-                f"chapter has {last_verse_number} verses; "
-                f"reference asked for {start}-{end}",
+                f"chapter has {last_verse_number} verses; reference asked for {start}-{end}",
             )
 
-    target_verse_ids = [
-        row.verse_id for row in combined_rows if start <= row.verse_number <= end
-    ]
+    target_verse_ids = [row.verse_id for row in combined_rows if start <= row.verse_number <= end]
     book_summary = BookSummary(
         name=first.book_name,
         abbreviation=first.book_abbrev,
@@ -648,9 +620,7 @@ async def passage_entries(
         ).all()
         tags_by_entry: dict[int, list[EntryTagSummary]] = {}
         for entry_id, tag_id, name in tag_rows:
-            tags_by_entry.setdefault(entry_id, []).append(
-                EntryTagSummary(id=tag_id, name=name)
-            )
+            tags_by_entry.setdefault(entry_id, []).append(EntryTagSummary(id=tag_id, name=name))
 
         for entry in entry_rows:
             title = (entry.title or "").strip() or None

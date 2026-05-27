@@ -6,12 +6,9 @@ tags, and dates so the filter intersections are easy to assert on.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
 from typing import Any
 
-import pytest
 from httpx import AsyncClient
-
 
 # ---- shared seed -----------------------------------------------------------
 
@@ -103,9 +100,7 @@ async def _seed_default(client: AsyncClient) -> list[dict[str, Any]]:
 # ---- filters ---------------------------------------------------------------
 
 
-async def test_no_filters_returns_all_seed_entries(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_no_filters_returns_all_seed_entries(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _seed_default(client)
     body = (await client.get("/api/v1/entries")).json()
@@ -130,9 +125,7 @@ async def test_q_matches_title(client: AsyncClient, bsb_loaded: None) -> None:
 async def test_q_matches_observation(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _seed_default(client)
-    body = (
-        await client.get("/api/v1/entries", params={"q": "Shepherd imagery"})
-    ).json()
+    body = (await client.get("/api/v1/entries", params={"q": "Shepherd imagery"})).json()
     assert body["total"] == 1
     assert "Psalms" in body["entries"][0]["scripture_ref"]
 
@@ -147,21 +140,15 @@ async def test_q_matches_application(client: AsyncClient, bsb_loaded: None) -> N
 async def test_q_matches_prayer(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _seed_default(client)
-    body = (
-        await client.get("/api/v1/entries", params={"q": "help me trust"})
-    ).json()
+    body = (await client.get("/api/v1/entries", params={"q": "help me trust"})).json()
     assert body["total"] == 1
 
 
-async def test_q_matches_scripture_text(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_q_matches_scripture_text(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _seed_default(client)
     # John 3:16 text starts with "For God so loved the world"
-    body = (
-        await client.get("/api/v1/entries", params={"q": "For God so loved"})
-    ).json()
+    body = (await client.get("/api/v1/entries", params={"q": "For God so loved"})).json()
     # John 3:16 + John 3:17-18 both contain that phrase via scripture_text.
     assert body["total"] >= 1
 
@@ -173,9 +160,7 @@ async def test_q_is_case_insensitive(client: AsyncClient, bsb_loaded: None) -> N
     assert body["total"] == 1
 
 
-async def test_q_whitespace_only_treated_as_absent(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_q_whitespace_only_treated_as_absent(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _seed_default(client)
     body = (await client.get("/api/v1/entries", params={"q": "   "})).json()
@@ -202,18 +187,14 @@ async def test_book_filter_alias_resolves_to_canonical(
     assert body["applied_filters"]["book"] == "John"
 
 
-async def test_book_filter_unknown_returns_400(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_book_filter_unknown_returns_400(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get("/api/v1/entries", params={"book": "Frodo"})
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "INVALID_BOOK"
 
 
-async def test_tag_filter_case_insensitive(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_tag_filter_case_insensitive(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _seed_default(client)
     body = (await client.get("/api/v1/entries", params={"tag": "FAITH"})).json()
@@ -222,21 +203,15 @@ async def test_tag_filter_case_insensitive(
     assert body["applied_filters"]["tag"] == "FAITH"  # echo as submitted (trimmed)
 
 
-async def test_tag_filter_unknown_returns_empty(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_tag_filter_unknown_returns_empty(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _seed_default(client)
-    body = (
-        await client.get("/api/v1/entries", params={"tag": "doesnotexist"})
-    ).json()
+    body = (await client.get("/api/v1/entries", params={"tag": "doesnotexist"})).json()
     assert body["total"] == 0
     assert body["entries"] == []
 
 
-async def test_date_range_inclusive_bounds(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_date_range_inclusive_bounds(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _seed_default(client)
     body = (
@@ -249,9 +224,7 @@ async def test_date_range_inclusive_bounds(
     assert body["total"] == 3
 
 
-async def test_inverted_date_range_returns_400(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_inverted_date_range_returns_400(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get(
         "/api/v1/entries",
@@ -281,34 +254,26 @@ async def test_filters_compose(client: AsyncClient, bsb_loaded: None) -> None:
     assert body["total"] <= 3
 
 
-async def test_applied_filters_echo_canonical_book(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_applied_filters_echo_canonical_book(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get("/api/v1/entries", params={"book": "Jn"})
     body = response.json()
     assert body["applied_filters"]["book"] == "John"
 
 
-async def test_total_reflects_filtered_count(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_total_reflects_filtered_count(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _seed_default(client)
     # Unfiltered total
     all_body = (await client.get("/api/v1/entries")).json()
     assert all_body["total"] == len(SEED_SPEC)
     # Filtered total < unfiltered
-    filtered = (
-        await client.get("/api/v1/entries", params={"book": "John"})
-    ).json()
+    filtered = (await client.get("/api/v1/entries", params={"book": "John"})).json()
     assert filtered["total"] == 3
     assert filtered["total"] < all_body["total"]
 
 
-async def test_filtered_list_query_count(
-    client: AsyncClient, bsb_loaded: None, engine
-) -> None:
+async def test_filtered_list_query_count(client: AsyncClient, bsb_loaded: None, engine) -> None:
     """Each filtered list request runs at most 3 SQL queries (count + page
     + tags-batch). Verified by counting SELECTs that touch the entries
     table during the request.
@@ -339,45 +304,33 @@ async def test_filtered_list_query_count(
     # touches the sessions table, not relevant to the list budget). We're
     # counting the entries-related ones: count, page (entries+translations),
     # tags batch.
-    entries_queries = [
-        q for q in queries if " from entries" in q or " from entry_tags" in q
-    ]
+    entries_queries = [q for q in queries if " from entries" in q or " from entry_tags" in q]
     assert len(entries_queries) <= 3, f"too many entries queries: {entries_queries}"
 
 
 # ---- calendar --------------------------------------------------------------
 
 
-async def test_calendar_empty_month(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_calendar_empty_month(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
-    body = (
-        await client.get("/api/v1/entries/calendar", params={"year": 1900, "month": 1})
-    ).json()
+    body = (await client.get("/api/v1/entries/calendar", params={"year": 1900, "month": 1})).json()
     assert body == {"year": 1900, "month": 1, "days": [], "total": 0}
 
 
-async def test_calendar_counts_per_day(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_calendar_counts_per_day(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     # Two entries on the same date, one on a different date.
     await _create(client, scripture_ref="John 3:16", entry_date_value="2026-05-26")
     await _create(client, scripture_ref="John 3:17", entry_date_value="2026-05-26")
     await _create(client, scripture_ref="John 3:18", entry_date_value="2026-05-20")
 
-    body = (
-        await client.get("/api/v1/entries/calendar", params={"year": 2026, "month": 5})
-    ).json()
+    body = (await client.get("/api/v1/entries/calendar", params={"year": 2026, "month": 5})).json()
     assert body["total"] == 3
     days = {d["entry_date"]: d["count"] for d in body["days"]}
     assert days == {"2026-05-20": 1, "2026-05-26": 2}
 
 
-async def test_calendar_scoped_to_user(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_calendar_scoped_to_user(client: AsyncClient, bsb_loaded: None) -> None:
     # alice creates an entry in May
     await _register(client, "alice")
     await _create(client, scripture_ref="John 3:16", entry_date_value="2026-05-15")
@@ -390,33 +343,23 @@ async def test_calendar_scoped_to_user(
         "/api/v1/auth/login",
         json={"username": "bob", "password": "bob-pw-1234"},
     )
-    body = (
-        await client.get("/api/v1/entries/calendar", params={"year": 2026, "month": 5})
-    ).json()
+    body = (await client.get("/api/v1/entries/calendar", params={"year": 2026, "month": 5})).json()
     # bob has no entries.
     assert body == {"year": 2026, "month": 5, "days": [], "total": 0}
 
 
-async def test_calendar_invalid_month_returns_422(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_calendar_invalid_month_returns_422(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
-    response = await client.get(
-        "/api/v1/entries/calendar", params={"year": 2026, "month": 13}
-    )
+    response = await client.get("/api/v1/entries/calendar", params={"year": 2026, "month": 13})
     assert response.status_code == 422
-    response = await client.get(
-        "/api/v1/entries/calendar", params={"year": 2026, "month": 0}
-    )
+    response = await client.get("/api/v1/entries/calendar", params={"year": 2026, "month": 0})
     assert response.status_code == 422
 
 
 # ---- on-this-day -----------------------------------------------------------
 
 
-async def test_on_this_day_no_prior_year_entries(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_on_this_day_no_prior_year_entries(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     body = (await client.get("/api/v1/entries/on-this-day")).json()
     assert body["entries"] == []
@@ -447,9 +390,7 @@ async def test_on_this_day_returns_matching_prior_year_entries(
     assert dates == ["2025-05-26", "2024-05-26"]
 
 
-async def test_on_this_day_years_back_filters_older(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_on_this_day_years_back_filters_older(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     target = "2026-05-26"
     await _create(client, scripture_ref="John 3:16", entry_date_value="2024-05-26")
@@ -466,9 +407,7 @@ async def test_on_this_day_years_back_filters_older(
     assert dates == ["2024-05-26"]
 
 
-async def test_on_this_day_feb29_leap_to_leap(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_on_this_day_feb29_leap_to_leap(client: AsyncClient, bsb_loaded: None) -> None:
     # Target is 2028-02-29 (leap). Match prior Feb 29 entries from 2024 and
     # 2020 leap years; do NOT match Feb 28 entries.
     await _register(client)
@@ -504,9 +443,7 @@ async def test_on_this_day_feb28_nonleap_does_not_pull_feb29(
     assert dates == ["2025-02-28"]
 
 
-async def test_on_this_day_scoped_to_user(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_on_this_day_scoped_to_user(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client, "alice")
     await _create(client, scripture_ref="John 3:16", entry_date_value="2024-05-26")
     # Create bob; bob has no entries on that day.

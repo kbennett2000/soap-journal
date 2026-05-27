@@ -86,14 +86,9 @@ def _full_translation(
             chapters=[
                 CanonicalChapter(
                     number=1,
-                    verses=[
-                        CanonicalVerse(number=v, text=f"Gen 1:{v}")
-                        for v in range(1, 6)
-                    ],
+                    verses=[CanonicalVerse(number=v, text=f"Gen 1:{v}") for v in range(1, 6)],
                     headings=[CanonicalHeading(before_verse=1, text="The Creation")],
-                    footnotes=[
-                        CanonicalFootnote(verse_number=2, text="Heb. tohu wabohu")
-                    ],
+                    footnotes=[CanonicalFootnote(verse_number=2, text="Heb. tohu wabohu")],
                 )
             ],
         )
@@ -127,9 +122,7 @@ async def test_load_inserts_translation_books_chapters_verses(
 
     book_count = (
         await db_session.execute(
-            select(func.count())
-            .select_from(Book)
-            .where(Book.translation_id == translation_row.id)
+            select(func.count()).select_from(Book).where(Book.translation_id == translation_row.id)
         )
     ).scalar_one()
     assert book_count == 66
@@ -162,21 +155,19 @@ async def test_loading_same_translation_twice_replaces_cleanly(
     await load_canonical_translation(db_session, second)
 
     translations = (
-        await db_session.execute(select(Translation).where(Translation.code == "TST"))
-    ).scalars().all()
+        (await db_session.execute(select(Translation).where(Translation.code == "TST")))
+        .scalars()
+        .all()
+    )
     assert len(translations) == 1
     assert translations[0].name == "Renamed"
 
     # Row counts are unchanged after the replace.
-    book_count = (
-        await db_session.execute(select(func.count()).select_from(Book))
-    ).scalar_one()
+    book_count = (await db_session.execute(select(func.count()).select_from(Book))).scalar_one()
     chapter_count = (
         await db_session.execute(select(func.count()).select_from(Chapter))
     ).scalar_one()
-    verse_count = (
-        await db_session.execute(select(func.count()).select_from(Verse))
-    ).scalar_one()
+    verse_count = (await db_session.execute(select(func.count()).select_from(Verse))).scalar_one()
     assert (book_count, chapter_count, verse_count) == (66, 66, 66)
 
 
@@ -191,16 +182,10 @@ async def test_loading_second_translation_isolates_from_first(
     await load_canonical_translation(db_session, b)
 
     # Two translations, each with 66 books.
-    codes = sorted(
-        (
-            await db_session.execute(select(Translation.code))
-        ).scalars().all()
-    )
+    codes = sorted((await db_session.execute(select(Translation.code))).scalars().all())
     assert codes == ["AAA", "BBB"]
 
-    total_books = (
-        await db_session.execute(select(func.count()).select_from(Book))
-    ).scalar_one()
+    total_books = (await db_session.execute(select(func.count()).select_from(Book))).scalar_one()
     assert total_books == 132  # 66 per translation
 
     # Deleting AAA via the loader pathway leaves BBB intact.
@@ -212,9 +197,7 @@ async def test_loading_second_translation_isolates_from_first(
     ).scalar_one()
     bbb_books = (
         await db_session.execute(
-            select(func.count())
-            .select_from(Book)
-            .where(Book.translation_id == bbb.id)
+            select(func.count()).select_from(Book).where(Book.translation_id == bbb.id)
         )
     ).scalar_one()
     assert bbb_books == 66
@@ -240,6 +223,4 @@ def test_invalid_canonical_payload_raises_validation_error() -> None:
     # (so the CLI's catch in test_cli_rejects_invalid_canonical_json is
     # exercising the right branch).
     with pytest.raises(ValidationError):
-        CanonicalTranslation(
-            code="X", name="X", language="en", copyright="x", books=[]
-        )
+        CanonicalTranslation(code="X", name="X", language="en", copyright="x", books=[])

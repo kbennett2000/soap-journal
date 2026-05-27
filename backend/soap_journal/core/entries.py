@@ -53,9 +53,7 @@ class _Resolved:
     verses: list[Verse]
 
 
-async def _resolve_translation(
-    db: AsyncSession, code: str | None
-) -> Translation:
+async def _resolve_translation(db: AsyncSession, code: str | None) -> Translation:
     if code is not None:
         row = (
             await db.execute(select(Translation).where(Translation.code == code))
@@ -69,9 +67,7 @@ async def _resolve_translation(
         return row
     row = (
         await db.execute(
-            select(Translation)
-            .order_by(Translation.loaded_at.asc(), Translation.id.asc())
-            .limit(1)
+            select(Translation).order_by(Translation.loaded_at.asc(), Translation.id.asc()).limit(1)
         )
     ).scalar_one_or_none()
     if row is None:
@@ -89,9 +85,7 @@ async def _resolve_scripture(
     try:
         parsed = parse_reference_or_raise(scripture_ref)
     except ReferenceParseError as exc:
-        raise_http(
-            status.HTTP_400_BAD_REQUEST, ErrorCode.INVALID_REFERENCE, str(exc)
-        )
+        raise_http(status.HTTP_400_BAD_REQUEST, ErrorCode.INVALID_REFERENCE, str(exc))
 
     translation = await _resolve_translation(db, translation_code)
 
@@ -100,9 +94,7 @@ async def _resolve_scripture(
 
     book = (
         await db.execute(
-            select(Book).where(
-                Book.translation_id == translation.id, Book.name == canon_book.name
-            )
+            select(Book).where(Book.translation_id == translation.id, Book.name == canon_book.name)
         )
     ).scalar_one_or_none()
     if book is None:
@@ -114,9 +106,7 @@ async def _resolve_scripture(
 
     chapter = (
         await db.execute(
-            select(Chapter).where(
-                Chapter.book_id == book.id, Chapter.number == parsed.chapter
-            )
+            select(Chapter).where(Chapter.book_id == book.id, Chapter.number == parsed.chapter)
         )
     ).scalar_one_or_none()
     if chapter is None:
@@ -129,9 +119,7 @@ async def _resolve_scripture(
     all_verses = (
         (
             await db.execute(
-                select(Verse)
-                .where(Verse.chapter_id == chapter.id)
-                .order_by(Verse.number.asc())
+                select(Verse).where(Verse.chapter_id == chapter.id).order_by(Verse.number.asc())
             )
         )
         .scalars()
@@ -156,8 +144,7 @@ async def _resolve_scripture(
             raise_http(
                 status.HTTP_404_NOT_FOUND,
                 ErrorCode.REFERENCE_OUT_OF_RANGE,
-                f"chapter has {last_verse_number} verses; "
-                f"reference asked for {start}-{end}",
+                f"chapter has {last_verse_number} verses; reference asked for {start}-{end}",
             )
 
     selected = [v for v in all_verses if start <= v.number <= end]
@@ -168,9 +155,7 @@ async def _resolve_scripture(
     )
 
 
-async def _resolve_tags(
-    db: AsyncSession, user_id: int, names: list[str]
-) -> list[Tag]:
+async def _resolve_tags(db: AsyncSession, user_id: int, names: list[str]) -> list[Tag]:
     """Resolve user-supplied tag names to Tag rows for this user.
 
     - Deduplicates within `names` case-insensitively (first occurrence's
@@ -195,11 +180,7 @@ async def _resolve_tags(
 
     keys = list(seen.keys())
     existing = (
-        (
-            await db.execute(
-                select(Tag).where(Tag.user_id == user_id, Tag.name_lower.in_(keys))
-            )
-        )
+        (await db.execute(select(Tag).where(Tag.user_id == user_id, Tag.name_lower.in_(keys))))
         .scalars()
         .all()
     )

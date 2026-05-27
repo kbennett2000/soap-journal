@@ -119,11 +119,7 @@ def resolve_filters(
 
 def _escape_like(value: str) -> str:
     """Escape SQL LIKE wildcards so user input is a literal substring."""
-    return (
-        value.replace("\\", "\\\\")
-        .replace("%", "\\%")
-        .replace("_", "\\_")
-    )
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def apply_filters(stmt: Select, user_id: int, filters: EntryFilters) -> Select:

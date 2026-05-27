@@ -64,9 +64,7 @@ async def _delete_existing_translation(db: AsyncSession, code: str) -> bool:
             verse_ids = [
                 vid
                 for (vid,) in (
-                    await db.execute(
-                        select(Verse.id).where(Verse.chapter_id.in_(chapter_ids))
-                    )
+                    await db.execute(select(Verse.id).where(Verse.chapter_id.in_(chapter_ids)))
                 ).all()
             ]
             if verse_ids:
@@ -176,7 +174,8 @@ async def load_canonical_translation(
 
 
 async def _run_cli_load(path: Path) -> int:
-    raw = path.read_text(encoding="utf-8")
+    # One-shot CLI; sync I/O on a file we just opened is fine here.
+    raw = path.read_text(encoding="utf-8")  # noqa: ASYNC240
     try:
         payload = CanonicalTranslation.model_validate_json(raw)
     except ValidationError as exc:
@@ -198,9 +197,7 @@ async def _run_cli_load(path: Path) -> int:
     finally:
         await engine.dispose()
 
-    print(
-        f"Loaded {payload.code}: {books} books, {chapters} chapters, {verses} verses"
-    )
+    print(f"Loaded {payload.code}: {books} books, {chapters} chapters, {verses} verses")
     return 0
 
 

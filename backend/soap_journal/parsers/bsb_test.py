@@ -59,19 +59,13 @@ def test_parse_lines_strips_bom() -> None:
 
 
 def test_parse_lines_rejects_unknown_book() -> None:
-    bad = (
-        "Verse\tBerean Standard Bible\n"
-        "Made Up Book 1:1\tdoes not exist.\n"
-    )
+    bad = "Verse\tBerean Standard Bible\nMade Up Book 1:1\tdoes not exist.\n"
     with pytest.raises(BsbParseError, match="does not match any canonical name or alias"):
         parse_lines(bad)
 
 
 def test_parse_lines_rejects_unparseable_reference() -> None:
-    bad = (
-        "Verse\tBerean Standard Bible\n"
-        "junk\tthe text.\n"
-    )
+    bad = "Verse\tBerean Standard Bible\njunk\tthe text.\n"
     with pytest.raises(BsbParseError, match="no verse lines found"):
         parse_lines(bad)
 

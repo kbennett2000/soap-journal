@@ -278,7 +278,7 @@ interface ControlsBarProps {
 function ControlsBar(props: ControlsBarProps): JSX.Element {
   const compareDisabled = props.translationsCount < 2;
   const compareTitle = compareDisabled
-    ? "Compare translations becomes active when a second translation is loaded."
+    ? "Compare translations becomes available when a second translation is loaded — see the README for instructions."
     : "Compare translations";
   return (
     <div className="flex flex-wrap items-start gap-2 rounded-md border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">

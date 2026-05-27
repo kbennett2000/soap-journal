@@ -52,6 +52,17 @@ export function DashboardPage(): JSX.Element {
               ))}
             </div>
           )}
+          {recentQuery.isError && (
+            <div
+              role="alert"
+              data-testid="dash-recent-error"
+              className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200"
+            >
+              {recentQuery.error instanceof ApiError
+                ? recentQuery.error.message
+                : "Couldn't load recent entries."}
+            </div>
+          )}
           {recentQuery.data && recentQuery.data.entries.length === 0 && (
             <div
               data-testid="dash-recent-empty"
@@ -100,6 +111,17 @@ export function DashboardPage(): JSX.Element {
                   className="h-10 animate-pulse rounded bg-slate-100 dark:bg-slate-800"
                 />
               ))}
+            </div>
+          )}
+          {onThisDayQuery.isError && (
+            <div
+              role="alert"
+              data-testid="dash-onthisday-error"
+              className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200"
+            >
+              {onThisDayQuery.error instanceof ApiError
+                ? onThisDayQuery.error.message
+                : "Couldn't load on-this-day entries."}
             </div>
           )}
           {onThisDayQuery.data && onThisDayQuery.data.entries.length === 0 && (

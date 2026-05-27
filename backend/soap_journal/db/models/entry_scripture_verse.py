@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Integer
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from soap_journal.db.base import Base

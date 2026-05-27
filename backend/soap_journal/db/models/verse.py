@@ -6,9 +6,7 @@ from soap_journal.db.base import Base
 
 class Verse(Base):
     __tablename__ = "verses"
-    __table_args__ = (
-        UniqueConstraint("chapter_id", "number", name="uq_verses_chapter_number"),
-    )
+    __table_args__ = (UniqueConstraint("chapter_id", "number", name="uq_verses_chapter_number"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     chapter_id: Mapped[int] = mapped_column(

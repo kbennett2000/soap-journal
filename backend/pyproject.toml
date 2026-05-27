@@ -19,7 +19,10 @@ select = [
     "UP",  # pyupgrade
     "ASYNC",
 ]
-ignore = []
+# B008: function call in argument defaults. FastAPI's Depends/Query/Body
+# are explicitly designed to live there; the rule generates pure noise
+# in a FastAPI codebase.
+ignore = ["B008"]
 
 [tool.ruff.lint.per-file-ignores]
 "alembic/versions/*.py" = ["E501"]

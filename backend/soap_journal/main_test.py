@@ -1,8 +1,7 @@
 """Tests for the FastAPI app factory's static-frontend mount behavior."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
-from typing import Awaitable, Callable
 
 import pytest
 import pytest_asyncio
@@ -107,6 +106,37 @@ async def test_api_route_still_works_under_static_mount(
     assert body["status"] == "ok"
 
 
+async def test_top_level_static_file_served_directly(
+    static_client: ClientFactory, tmp_path: Path
+) -> None:
+    """Vite drops favicon.svg (and similar) at the dist root. The SPA
+    fallback must serve those instead of returning index.html."""
+    dist = tmp_path / "frontend-dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html>spa</html>")
+    (dist / "favicon.svg").write_text("<svg/>")
+
+    client = await static_client(dist)
+    response = await client.get("/favicon.svg")
+    assert response.status_code == 200
+    assert response.text == "<svg/>"
+
+
+async def test_unknown_top_level_path_falls_back_to_index(
+    static_client: ClientFactory, tmp_path: Path
+) -> None:
+    """A request for a top-level file that doesn't exist still hits the
+    SPA fallback (e.g. /entries — single segment, no extension)."""
+    dist = tmp_path / "frontend-dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html>spa</html>")
+
+    client = await static_client(dist)
+    response = await client.get("/entries")
+    assert response.status_code == 200
+    assert "spa" in response.text
+
+
 async def test_assets_served_with_immutable_cache_header(
     static_client: ClientFactory, tmp_path: Path
 ) -> None:
@@ -119,7 +149,4 @@ async def test_assets_served_with_immutable_cache_header(
     response = await client.get("/assets/foo.js")
     assert response.status_code == 200
     assert response.text == "console.log('hi');"
-    assert (
-        response.headers["cache-control"]
-        == "public, max-age=31536000, immutable"
-    )
+    assert response.headers["cache-control"] == "public, max-age=31536000, immutable"
