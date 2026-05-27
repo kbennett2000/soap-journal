@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (idempotent per-translation, not all-or-nothing).
 - `bibles/` directory for user-provided copyrighted Bible source files
   (gitignored; `bibles/README.md` explains usage).
+- ESV parser (`python -m soap_journal.parsers.esv`) for users who have
+  their own English Standard Version PDF. First parser to extract
+  footnotes into the canonical schema.
 - 11 new book abbreviation aliases (Deu, Rut, Sol, Joe, Amo, Oba, Mat,
   Mar, Joh, Phi, Jam) to support NKJV and common shorthand.
 
