@@ -201,3 +201,27 @@ export interface PassageEntriesResponse {
   count: number;
   entries: EntryResponse[];
 }
+
+// ---- Admin ---------------------------------------------------------------
+
+export interface AdminUserListResponse {
+  users: UserResponse[];
+}
+
+export interface AdminCreateUserRequest {
+  username: string;
+  password: string;
+  is_admin?: boolean;
+}
+
+export interface AdminResetPasswordRequest {
+  new_password: string;
+}
+
+export interface SettingsView {
+  open_registration: boolean;
+}
+
+export interface SettingsEnvelope {
+  settings: SettingsView;
+}
