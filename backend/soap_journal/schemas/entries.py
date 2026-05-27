@@ -92,11 +92,37 @@ class EntryEnvelope(BaseModel):
     entry: EntryResponse
 
 
+class AppliedFilters(BaseModel):
+    q: str | None = None
+    book: str | None = None
+    tag: str | None = None
+    from_date: date | None = None
+    to_date: date | None = None
+
+
 class EntryListResponse(BaseModel):
     entries: list[EntryResponse]
     total: int
     limit: int
     offset: int
+    applied_filters: AppliedFilters
+
+
+class CalendarDay(BaseModel):
+    entry_date: date
+    count: int
+
+
+class CalendarResponse(BaseModel):
+    year: int
+    month: int
+    days: list[CalendarDay]
+    total: int
+
+
+class OnThisDayResponse(BaseModel):
+    target_date: date
+    entries: list[EntryResponse]
 
 
 # ---- tags ------------------------------------------------------------------

@@ -92,7 +92,11 @@ async def test_cannot_see_other_users_entry(
 
     # Bob's own list is empty.
     response = await client.get("/api/v1/entries")
-    assert response.json() == {"entries": [], "total": 0, "limit": 20, "offset": 0}
+    body = response.json()
+    assert body["entries"] == []
+    assert body["total"] == 0
+    assert body["limit"] == 20
+    assert body["offset"] == 0
 
 
 # ---- create ----------------------------------------------------------------
@@ -304,7 +308,11 @@ async def test_list_empty_for_new_user(
     await _register(client)
     response = await client.get("/api/v1/entries")
     assert response.status_code == 200
-    assert response.json() == {"entries": [], "total": 0, "limit": 20, "offset": 0}
+    body = response.json()
+    assert body["entries"] == []
+    assert body["total"] == 0
+    assert body["limit"] == 20
+    assert body["offset"] == 0
 
 
 async def test_list_default_order_is_newest_first(

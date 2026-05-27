@@ -18,6 +18,8 @@ class ErrorCode(StrEnum):
     CHAPTER_NOT_FOUND = "CHAPTER_NOT_FOUND"
     REFERENCE_OUT_OF_RANGE = "REFERENCE_OUT_OF_RANGE"
     ENTRY_NOT_FOUND = "ENTRY_NOT_FOUND"
+    INVALID_BOOK = "INVALID_BOOK"
+    INVALID_DATE_RANGE = "INVALID_DATE_RANGE"
 
 
 def raise_http(status: int, code: ErrorCode, message: str | None = None) -> NoReturn:
