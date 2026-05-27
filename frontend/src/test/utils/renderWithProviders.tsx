@@ -3,8 +3,13 @@ import { render, type RenderOptions, type RenderResult } from "@testing-library/
 import { type ReactElement, type ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 
+/** Accepted by MemoryRouter — either a plain pathname or a partial location. */
+export type InitialMemoryEntry =
+  | string
+  | { pathname: string; search?: string; hash?: string; state?: unknown };
+
 interface ProviderOptions extends Omit<RenderOptions, "wrapper"> {
-  initialEntries?: string[];
+  initialEntries?: InitialMemoryEntry[];
   queryClient?: QueryClient;
 }
 
