@@ -1,5 +1,5 @@
 import asyncio
-from datetime import timezone
+from datetime import UTC
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -13,9 +13,7 @@ from soap_journal.db.models.user_session import UserSession
 
 
 async def _set_open_registration(db: AsyncSession, value: bool) -> None:
-    result = await db.execute(
-        select(Setting).where(Setting.key == OPEN_REGISTRATION_KEY)
-    )
+    result = await db.execute(select(Setting).where(Setting.key == OPEN_REGISTRATION_KEY))
     row = result.scalar_one_or_none()
     new_value = "true" if value else "false"
     if row is None:
@@ -201,17 +199,13 @@ async def test_me_with_valid_cookie_returns_user_and_extends_session(
 ) -> None:
     assert (await _register(client, "alice")).status_code == 201
 
-    user_row = (
-        await db_session.execute(select(User).where(User.username == "alice"))
-    ).scalar_one()
+    user_row = (await db_session.execute(select(User).where(User.username == "alice"))).scalar_one()
     session_row = (
-        await db_session.execute(
-            select(UserSession).where(UserSession.user_id == user_row.id)
-        )
+        await db_session.execute(select(UserSession).where(UserSession.user_id == user_row.id))
     ).scalar_one()
     original_expires = session_row.expires_at
     if original_expires.tzinfo is None:
-        original_expires = original_expires.replace(tzinfo=timezone.utc)
+        original_expires = original_expires.replace(tzinfo=UTC)
 
     # Wait long enough for wall-clock to advance past microsecond resolution
     # so the extended expires_at is strictly greater than the original.
@@ -225,7 +219,7 @@ async def test_me_with_valid_cookie_returns_user_and_extends_session(
     await db_session.refresh(session_row)
     new_expires = session_row.expires_at
     if new_expires.tzinfo is None:
-        new_expires = new_expires.replace(tzinfo=timezone.utc)
+        new_expires = new_expires.replace(tzinfo=UTC)
     assert new_expires > original_expires
 
 

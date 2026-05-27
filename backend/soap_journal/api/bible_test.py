@@ -14,9 +14,7 @@ from __future__ import annotations
 import urllib.parse
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
-
 from sqlalchemy import delete
 
 from soap_journal.db.models.book import Book
@@ -26,7 +24,6 @@ from soap_journal.db.models.heading import Heading
 from soap_journal.db.models.translation import Translation
 from soap_journal.db.models.verse import Verse
 from soap_journal.parsers.bsb import OMITTED_VERSE_PLACEHOLDER
-
 
 # ---- helpers ---------------------------------------------------------------
 
@@ -169,9 +166,7 @@ async def test_translation_detail_chapter_counts_match(
     assert book["chapter_count"] == expected
 
 
-async def test_translation_detail_testament_split(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_translation_detail_testament_split(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     body = (await client.get("/api/v1/bible/translations/BSB")).json()
     ot = [b for b in body["books"] if b["testament"] == "OT"]
@@ -227,9 +222,7 @@ async def test_translation_detail_uses_single_chapter_count_query(
 # ---- chapter retrieval -----------------------------------------------------
 
 
-async def test_chapter_john_3_returns_36_verses(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_chapter_john_3_returns_36_verses(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get(
         f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/3"
@@ -243,14 +236,10 @@ async def test_chapter_john_3_returns_36_verses(
     assert verse_16["text"].startswith("For God so loved the world")
 
 
-async def test_chapter_no_red_letters_in_bsb(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_chapter_no_red_letters_in_bsb(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     body = (
-        await client.get(
-            f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/3"
-        )
+        await client.get(f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/3")
     ).json()
     assert all(v["is_red_letter"] is False for v in body["verses"])
 
@@ -260,9 +249,7 @@ async def test_chapter_bsb_has_no_headings_or_footnotes(
 ) -> None:
     await _register(client)
     body = (
-        await client.get(
-            f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/3"
-        )
+        await client.get(f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/3")
     ).json()
     assert body["headings"] == []
     assert all(v["footnotes"] == [] for v in body["verses"])
@@ -276,17 +263,13 @@ async def test_chapter_with_omitted_verse_keeps_slot_with_placeholder(
     # OMITTED_VERSE_PLACEHOLDER constant.
     await _register(client)
     body = (
-        await client.get(
-            f"/api/v1/bible/translations/BSB/books/{_encode_path('Acts')}/chapters/8"
-        )
+        await client.get(f"/api/v1/bible/translations/BSB/books/{_encode_path('Acts')}/chapters/8")
     ).json()
     verse_37 = next(v for v in body["verses"] if v["number"] == 37)
     assert verse_37["text"] == OMITTED_VERSE_PLACEHOLDER
 
 
-async def test_chapter_resolves_by_abbreviation(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_chapter_resolves_by_abbreviation(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get(
         f"/api/v1/bible/translations/BSB/books/{_encode_path('Jn')}/chapters/3"
@@ -295,9 +278,7 @@ async def test_chapter_resolves_by_abbreviation(
     assert response.json()["book"]["name"] == "John"
 
 
-async def test_chapter_resolves_by_alias(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_chapter_resolves_by_alias(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get(
         f"/api/v1/bible/translations/BSB/books/{_encode_path('Apocalypse')}/chapters/22"
@@ -306,14 +287,10 @@ async def test_chapter_resolves_by_alias(
     assert response.json()["book"]["name"] == "Revelation"
 
 
-async def test_chapter_navigation_within_book(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_chapter_navigation_within_book(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     body = (
-        await client.get(
-            f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/3"
-        )
+        await client.get(f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/3")
     ).json()
     assert body["previous"] == {"book_name": "John", "chapter_number": 2}
     assert body["next"] == {"book_name": "John", "chapter_number": 4}
@@ -324,9 +301,7 @@ async def test_chapter_navigation_crosses_book_boundary_forward(
 ) -> None:
     await _register(client)
     body = (
-        await client.get(
-            f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/21"
-        )
+        await client.get(f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/21")
     ).json()
     assert body["next"] == {"book_name": "Acts", "chapter_number": 1}
 
@@ -336,9 +311,7 @@ async def test_chapter_navigation_crosses_book_boundary_backward(
 ) -> None:
     await _register(client)
     body = (
-        await client.get(
-            f"/api/v1/bible/translations/BSB/books/{_encode_path('Acts')}/chapters/1"
-        )
+        await client.get(f"/api/v1/bible/translations/BSB/books/{_encode_path('Acts')}/chapters/1")
     ).json()
     assert body["previous"] == {"book_name": "John", "chapter_number": 21}
 
@@ -369,9 +342,7 @@ async def test_chapter_navigation_last_chapter_revelation_has_null_next(
     assert body["previous"] == {"book_name": "Revelation", "chapter_number": 21}
 
 
-async def test_chapter_unknown_translation_404(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_chapter_unknown_translation_404(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get(
         f"/api/v1/bible/translations/NOPE/books/{_encode_path('John')}/chapters/3"
@@ -380,9 +351,7 @@ async def test_chapter_unknown_translation_404(
     assert response.json()["detail"]["code"] == "TRANSLATION_NOT_FOUND"
 
 
-async def test_chapter_unknown_book_404(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_chapter_unknown_book_404(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get(
         f"/api/v1/bible/translations/BSB/books/{_encode_path('Frodo')}/chapters/1"
@@ -391,9 +360,7 @@ async def test_chapter_unknown_book_404(
     assert response.json()["detail"]["code"] == "BOOK_NOT_FOUND"
 
 
-async def test_chapter_zero_returns_404(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_chapter_zero_returns_404(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get(
         f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/0"
@@ -402,9 +369,7 @@ async def test_chapter_zero_returns_404(
     assert response.json()["detail"]["code"] == "CHAPTER_NOT_FOUND"
 
 
-async def test_chapter_past_end_returns_404(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_chapter_past_end_returns_404(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get(
         f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/99"
@@ -434,9 +399,7 @@ async def test_resolve_single_verse(client: AsyncClient, bsb_loaded: None) -> No
 
 async def test_resolve_verse_range(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
-    response = await client.get(
-        "/api/v1/bible/resolve", params={"ref": "John 3:16-20"}
-    )
+    response = await client.get("/api/v1/bible/resolve", params={"ref": "John 3:16-20"})
     assert response.status_code == 200
     body = response.json()
     assert body["reference"]["canonical_string"] == "John 3:16-20"
@@ -456,9 +419,7 @@ async def test_resolve_whole_chapter_fills_start_and_end(
     assert len(body["verses"]) == 36
 
 
-async def test_resolve_normalizes_alias_to_canonical(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_resolve_normalizes_alias_to_canonical(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get("/api/v1/bible/resolve", params={"ref": "jn 3:16"})
     assert response.json()["reference"]["canonical_string"] == "John 3:16"
@@ -477,9 +438,7 @@ async def test_resolve_handles_no_space_numbered_book(
 
 async def test_resolve_accepts_en_dash(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
-    response = await client.get(
-        "/api/v1/bible/resolve", params={"ref": "John 3:16–20"}
-    )
+    response = await client.get("/api/v1/bible/resolve", params={"ref": "John 3:16–20"})
     assert response.status_code == 200
     assert response.json()["reference"]["canonical_string"] == "John 3:16-20"
 
@@ -508,9 +467,7 @@ async def test_resolve_unknown_book_returns_400_invalid_reference(
     client: AsyncClient, bsb_loaded: None
 ) -> None:
     await _register(client)
-    response = await client.get(
-        "/api/v1/bible/resolve", params={"ref": "Frodo 3:16"}
-    )
+    response = await client.get("/api/v1/bible/resolve", params={"ref": "Frodo 3:16"})
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "INVALID_REFERENCE"
 
@@ -519,18 +476,14 @@ async def test_resolve_cross_chapter_range_returns_400(
     client: AsyncClient, bsb_loaded: None
 ) -> None:
     await _register(client)
-    response = await client.get(
-        "/api/v1/bible/resolve", params={"ref": "John 3:30-4:2"}
-    )
+    response = await client.get("/api/v1/bible/resolve", params={"ref": "John 3:30-4:2"})
     assert response.status_code == 400
     body = response.json()
     assert body["detail"]["code"] == "INVALID_REFERENCE"
     assert "cross-chapter" in body["detail"]["message"]
 
 
-async def test_resolve_missing_ref_param_returns_422(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_resolve_missing_ref_param_returns_422(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get("/api/v1/bible/resolve")
     assert response.status_code == 422

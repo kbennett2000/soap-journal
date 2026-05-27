@@ -44,7 +44,10 @@ class CanonicalHeading(BaseModel):
     before_verse: int = Field(
         ...,
         ge=1,
-        description="Verse number this heading appears before (inclusive). Must reference an existing verse in the chapter.",
+        description=(
+            "Verse number this heading appears before (inclusive). Must "
+            "reference an existing verse in the chapter."
+        ),
     )
     text: str = Field(..., min_length=1, description="Heading text. Whitespace-trimmed.")
 
@@ -55,7 +58,10 @@ class CanonicalFootnote(BaseModel):
     verse_number: int = Field(
         ...,
         ge=1,
-        description="Verse number this footnote belongs to. Must reference an existing verse in the chapter.",
+        description=(
+            "Verse number this footnote belongs to. Must reference an "
+            "existing verse in the chapter."
+        ),
     )
     text: str = Field(..., min_length=1, description="Footnote text. Whitespace-trimmed.")
 
@@ -79,17 +85,18 @@ class CanonicalChapter(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _verses_are_1_to_n(self) -> "CanonicalChapter":
+    def _verses_are_1_to_n(self) -> CanonicalChapter:
         numbers = [v.number for v in self.verses]
         expected = list(range(1, len(numbers) + 1))
         if numbers != expected:
             raise ValueError(
-                f"chapter {self.number} verses must be numbered 1..N with no gaps or duplicates, got {numbers}"
+                f"chapter {self.number} verses must be numbered 1..N "
+                f"with no gaps or duplicates, got {numbers}"
             )
         return self
 
     @model_validator(mode="after")
-    def _headings_reference_existing_verses(self) -> "CanonicalChapter":
+    def _headings_reference_existing_verses(self) -> CanonicalChapter:
         verse_numbers = {v.number for v in self.verses}
         for heading in self.headings:
             if heading.before_verse not in verse_numbers:
@@ -100,7 +107,7 @@ class CanonicalChapter(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def _footnotes_reference_existing_verses(self) -> "CanonicalChapter":
+    def _footnotes_reference_existing_verses(self) -> CanonicalChapter:
         verse_numbers = {v.number for v in self.verses}
         for footnote in self.footnotes:
             if footnote.verse_number not in verse_numbers:
@@ -127,29 +134,33 @@ class CanonicalBook(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _name_is_canonical(self) -> "CanonicalBook":
+    def _name_is_canonical(self) -> CanonicalBook:
         canon = get_book_by_name(self.name)
         if canon is None or canon.name != self.name:
             raise ValueError(
-                f"book name {self.name!r} is not the canonical form; use the exact name from ALL_BOOKS"
+                f"book name {self.name!r} is not the canonical form; "
+                f"use the exact name from ALL_BOOKS"
             )
         if canon.order_index != self.order_index:
             raise ValueError(
-                f"book {self.name!r} expects order_index={canon.order_index}, got {self.order_index}"
+                f"book {self.name!r} expects order_index={canon.order_index}, "
+                f"got {self.order_index}"
             )
         if canon.abbreviation != self.abbreviation:
             raise ValueError(
-                f"book {self.name!r} expects abbreviation={canon.abbreviation!r}, got {self.abbreviation!r}"
+                f"book {self.name!r} expects abbreviation={canon.abbreviation!r}, "
+                f"got {self.abbreviation!r}"
             )
         return self
 
     @model_validator(mode="after")
-    def _chapters_are_1_to_n(self) -> "CanonicalBook":
+    def _chapters_are_1_to_n(self) -> CanonicalBook:
         numbers = [c.number for c in self.chapters]
         expected = list(range(1, len(numbers) + 1))
         if numbers != expected:
             raise ValueError(
-                f"book {self.name!r} chapters must be numbered 1..N with no gaps or duplicates, got {numbers}"
+                f"book {self.name!r} chapters must be numbered 1..N "
+                f"with no gaps or duplicates, got {numbers}"
             )
         return self
 
@@ -163,7 +174,10 @@ class CanonicalTranslation(BaseModel):
         ...,
         min_length=2,
         max_length=8,
-        description="ISO 639-1 language code (e.g. 'en'). Long enough for IETF tags like 'en-US' if a parser ever needs it.",
+        description=(
+            "ISO 639-1 language code (e.g. 'en'). Long enough for IETF "
+            "tags like 'en-US' if a parser ever needs it."
+        ),
     )
     copyright: str = Field(
         ...,
@@ -176,7 +190,7 @@ class CanonicalTranslation(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _books_match_canon(self) -> "CanonicalTranslation":
+    def _books_match_canon(self) -> CanonicalTranslation:
         expected = [(b.order_index, b.name) for b in ALL_BOOKS]
         actual = [(b.order_index, b.name) for b in self.books]
         if actual != expected:

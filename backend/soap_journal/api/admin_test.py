@@ -7,22 +7,17 @@ from soap_journal.core.settings_store import set_open_registration
 from soap_journal.db.models.user import User
 from soap_journal.db.models.user_session import UserSession
 
-
 # ---- helpers ---------------------------------------------------------------
 
 
-async def _register(
-    client: AsyncClient, username: str, password: str = "password123"
-):
+async def _register(client: AsyncClient, username: str, password: str = "password123"):
     return await client.post(
         "/api/v1/auth/register",
         json={"username": username, "password": password},
     )
 
 
-async def _login(
-    client: AsyncClient, username: str, password: str = "password123"
-):
+async def _login(client: AsyncClient, username: str, password: str = "password123"):
     client.cookies.clear()
     return await client.post(
         "/api/v1/auth/login",
@@ -38,16 +33,14 @@ async def _bootstrap_admin_and_second_user(
     assert (await _register(client, "alice")).status_code == 201
     await set_open_registration(db, True)
     assert (await _register(client, "bob")).status_code == 201
-    bob_id = (await _register_get_id(client, db, "bob"))
+    bob_id = await _register_get_id(client, db, "bob")
     alice_id = await _register_get_id(client, db, "alice")
     # Switch back to alice's session for admin actions.
     assert (await _login(client, "alice")).status_code == 200
     return alice_id, bob_id
 
 
-async def _register_get_id(
-    client: AsyncClient, db: AsyncSession, username: str
-) -> int:
+async def _register_get_id(client: AsyncClient, db: AsyncSession, username: str) -> int:
     result = await db.execute(select(User).where(User.username == username))
     return result.scalar_one().id
 
@@ -100,9 +93,7 @@ async def test_list_users_returns_all_users_in_created_order(
 # ---- create user -----------------------------------------------------------
 
 
-async def test_admin_create_user_happy_path(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_admin_create_user_happy_path(client: AsyncClient, db_session: AsyncSession) -> None:
     assert (await _register(client, "alice")).status_code == 201
 
     response = await client.post(
@@ -148,9 +139,7 @@ async def test_admin_create_user_duplicate_username_returns_409(
     assert response.json()["detail"]["code"] == "USERNAME_TAKEN"
 
 
-async def test_admin_created_user_can_login(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_admin_created_user_can_login(client: AsyncClient, db_session: AsyncSession) -> None:
     assert (await _register(client, "alice")).status_code == 201
     assert (
         await client.post(
@@ -191,9 +180,7 @@ async def test_admin_delete_user_removes_user_and_their_sessions(
     assert me.status_code == 401
 
     # Sessions row is gone too.
-    leftover = await db_session.execute(
-        select(UserSession).where(UserSession.user_id == bob_id)
-    )
+    leftover = await db_session.execute(select(UserSession).where(UserSession.user_id == bob_id))
     assert leftover.scalar_one_or_none() is None
 
 
@@ -439,9 +426,7 @@ async def test_admin_put_settings_persists_open_registration(
 ) -> None:
     assert (await _register(client, "alice")).status_code == 201
 
-    put_resp = await client.put(
-        "/api/v1/admin/settings", json={"open_registration": True}
-    )
+    put_resp = await client.put("/api/v1/admin/settings", json={"open_registration": True})
     assert put_resp.status_code == 200
     assert put_resp.json()["settings"]["open_registration"] is True
 
@@ -456,9 +441,7 @@ async def test_admin_put_settings_opens_registration_end_to_end(
     # can then register.
     assert (await _register(client, "alice")).status_code == 201
     assert (
-        await client.put(
-            "/api/v1/admin/settings", json={"open_registration": True}
-        )
+        await client.put("/api/v1/admin/settings", json={"open_registration": True})
     ).status_code == 200
 
     # Drop alice's cookie and try as a "fresh" client.

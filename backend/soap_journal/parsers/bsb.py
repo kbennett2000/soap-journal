@@ -136,7 +136,8 @@ def parse_lines(text: str) -> tuple[BooksData, list[str]]:
             book = get_book_by_name(source_book)
             if book is None:
                 raise BsbParseError(
-                    f"line {lineno}: book {source_book!r} does not match any canonical name or alias"
+                    f"line {lineno}: book {source_book!r} does not match "
+                    f"any canonical name or alias"
                 )
             canonical_name = book.name
             seen_source_names[source_book] = canonical_name
@@ -213,9 +214,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Parse the BSB plain-text source into canonical Bible JSON.",
     )
     parser.add_argument("source", type=Path, help="Path to bsb.txt")
-    parser.add_argument(
-        "--out", type=Path, required=True, help="Output path for canonical JSON"
-    )
+    parser.add_argument("--out", type=Path, required=True, help="Output path for canonical JSON")
     args = parser.parse_args(argv)
 
     try:

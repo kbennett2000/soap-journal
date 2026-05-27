@@ -19,7 +19,6 @@ from soap_journal.db.models.entry_scripture_verse import EntryScriptureVerse
 from soap_journal.db.models.entry_tag import EntryTag
 from soap_journal.db.models.tag import Tag
 
-
 # ---- helpers ---------------------------------------------------------------
 
 
@@ -50,15 +49,11 @@ async def test_entries_list_unauthenticated_returns_401(client: AsyncClient) -> 
 
 
 async def test_entry_create_unauthenticated_returns_401(client: AsyncClient) -> None:
-    response = await client.post(
-        "/api/v1/entries", json={"scripture_ref": "John 3:16"}
-    )
+    response = await client.post("/api/v1/entries", json={"scripture_ref": "John 3:16"})
     assert response.status_code == 401
 
 
-async def test_cannot_see_other_users_entry(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_cannot_see_other_users_entry(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client, "alice")
     entry = await _create_entry(client, scripture_ref="John 3:16")
     alice_entry_id = entry["id"]
@@ -102,9 +97,7 @@ async def test_cannot_see_other_users_entry(
 # ---- create ----------------------------------------------------------------
 
 
-async def test_create_minimal_payload(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_create_minimal_payload(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     entry = await _create_entry(client, scripture_ref="John 3:16")
 
@@ -139,9 +132,7 @@ async def test_create_full_payload(client: AsyncClient, bsb_loaded: None) -> Non
     assert {t["name"] for t in entry["tags"]} == {"faith", "grace"}
 
 
-async def test_create_normalizes_scripture_ref(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_create_normalizes_scripture_ref(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     entry = await _create_entry(client, scripture_ref="jn 3:16-20")
     assert entry["scripture_ref"] == "John 3:16-20"
@@ -166,13 +157,9 @@ async def test_create_whole_chapter_joins_all_verses(
     assert len(entry["scripture_text"]) > 500
 
 
-async def test_create_bad_reference_returns_400(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_create_bad_reference_returns_400(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
-    response = await client.post(
-        "/api/v1/entries", json={"scripture_ref": "Frodo 3:16"}
-    )
+    response = await client.post("/api/v1/entries", json={"scripture_ref": "Frodo 3:16"})
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "INVALID_REFERENCE"
 
@@ -181,9 +168,7 @@ async def test_create_out_of_range_reference_returns_404(
     client: AsyncClient, bsb_loaded: None
 ) -> None:
     await _register(client)
-    response = await client.post(
-        "/api/v1/entries", json={"scripture_ref": "John 3:99"}
-    )
+    response = await client.post("/api/v1/entries", json={"scripture_ref": "John 3:99"})
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "REFERENCE_OUT_OF_RANGE"
 
@@ -192,9 +177,7 @@ async def test_create_chapter_out_of_range_returns_404(
     client: AsyncClient, bsb_loaded: None
 ) -> None:
     await _register(client)
-    response = await client.post(
-        "/api/v1/entries", json={"scripture_ref": "John 99"}
-    )
+    response = await client.post("/api/v1/entries", json={"scripture_ref": "John 99"})
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "CHAPTER_NOT_FOUND"
 
@@ -218,9 +201,7 @@ async def test_create_dedupes_tags_case_insensitively(
     client: AsyncClient, bsb_loaded: None
 ) -> None:
     await _register(client)
-    entry = await _create_entry(
-        client, scripture_ref="John 3:16", tags=["Faith", "FAITH", "faith"]
-    )
+    entry = await _create_entry(client, scripture_ref="John 3:16", tags=["Faith", "FAITH", "faith"])
     assert len(entry["tags"]) == 1
     # Original casing of the first occurrence wins.
     assert entry["tags"][0]["name"] == "Faith"
@@ -230,30 +211,20 @@ async def test_create_reuses_existing_tag_case_insensitively(
     client: AsyncClient, bsb_loaded: None
 ) -> None:
     await _register(client)
-    first = await _create_entry(
-        client, scripture_ref="John 3:16", tags=["Faith"]
-    )
-    second = await _create_entry(
-        client, scripture_ref="John 3:17", tags=["faith"]
-    )
+    first = await _create_entry(client, scripture_ref="John 3:16", tags=["Faith"])
+    second = await _create_entry(client, scripture_ref="John 3:17", tags=["faith"])
     assert first["tags"][0]["id"] == second["tags"][0]["id"]
     # Stored name keeps the casing from the first time it was created.
     assert second["tags"][0]["name"] == "Faith"
 
 
-async def test_create_trims_tag_whitespace(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_create_trims_tag_whitespace(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
-    entry = await _create_entry(
-        client, scripture_ref="John 3:16", tags=["  hope  "]
-    )
+    entry = await _create_entry(client, scripture_ref="John 3:16", tags=["  hope  "])
     assert entry["tags"][0]["name"] == "hope"
 
 
-async def test_create_rejects_empty_tag_after_trim(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_create_rejects_empty_tag_after_trim(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.post(
         "/api/v1/entries",
@@ -262,9 +233,7 @@ async def test_create_rejects_empty_tag_after_trim(
     assert response.status_code == 422
 
 
-async def test_create_rejects_tag_over_max_length(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_create_rejects_tag_over_max_length(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.post(
         "/api/v1/entries",
@@ -273,9 +242,7 @@ async def test_create_rejects_tag_over_max_length(
     assert response.status_code == 422
 
 
-async def test_create_rejects_tag_with_control_chars(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_create_rejects_tag_with_control_chars(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.post(
         "/api/v1/entries",
@@ -287,13 +254,9 @@ async def test_create_rejects_tag_with_control_chars(
 # ---- read ------------------------------------------------------------------
 
 
-async def test_get_entry_by_id_returns_full_payload(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_get_entry_by_id_returns_full_payload(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
-    created = await _create_entry(
-        client, scripture_ref="John 3:16", title="Hope", tags=["faith"]
-    )
+    created = await _create_entry(client, scripture_ref="John 3:16", title="Hope", tags=["faith"])
     response = await client.get(f"/api/v1/entries/{created['id']}")
     assert response.status_code == 200
     body = response.json()["entry"]
@@ -302,9 +265,7 @@ async def test_get_entry_by_id_returns_full_payload(
     assert [t["name"] for t in body["tags"]] == ["faith"]
 
 
-async def test_list_empty_for_new_user(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_list_empty_for_new_user(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get("/api/v1/entries")
     assert response.status_code == 200
@@ -315,9 +276,7 @@ async def test_list_empty_for_new_user(
     assert body["offset"] == 0
 
 
-async def test_list_default_order_is_newest_first(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_list_default_order_is_newest_first(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     today = date.today()
     older = (today - timedelta(days=5)).isoformat()
@@ -331,9 +290,7 @@ async def test_list_default_order_is_newest_first(
     assert dates == [newer, older]
 
 
-async def test_list_oldest_order_reverses(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_list_oldest_order_reverses(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     today = date.today()
     older = (today - timedelta(days=5)).isoformat()
@@ -346,9 +303,7 @@ async def test_list_oldest_order_reverses(
     assert dates == [older, newer]
 
 
-async def test_list_paginates(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_list_paginates(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     base = date.today()
     for i in range(5):
@@ -378,9 +333,7 @@ async def test_list_limit_capped(client: AsyncClient, bsb_loaded: None) -> None:
 # ---- update ----------------------------------------------------------------
 
 
-async def test_update_replaces_all_fields(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_update_replaces_all_fields(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     created = await _create_entry(
         client,
@@ -435,9 +388,7 @@ async def test_update_rebuilds_verse_links_on_ref_change(
     ).scalar_one()
     assert new_count == 5
     # scripture_text grew with the range.
-    assert len(response.json()["entry"]["scripture_text"]) > len(
-        created["scripture_text"]
-    )
+    assert len(response.json()["entry"]["scripture_text"]) > len(created["scripture_text"])
 
 
 async def test_update_bumps_updated_at_but_not_created_at(
@@ -460,13 +411,9 @@ async def test_update_bumps_updated_at_but_not_created_at(
     assert body["updated_at"] != original_updated
 
 
-async def test_update_unknown_entry_returns_404(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_update_unknown_entry_returns_404(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
-    response = await client.put(
-        "/api/v1/entries/9999", json={"scripture_ref": "John 3:16"}
-    )
+    response = await client.put("/api/v1/entries/9999", json={"scripture_ref": "John 3:16"})
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "ENTRY_NOT_FOUND"
 
@@ -478,9 +425,7 @@ async def test_delete_removes_entry_and_link_rows(
     client: AsyncClient, bsb_loaded: None, db_session: AsyncSession
 ) -> None:
     await _register(client)
-    created = await _create_entry(
-        client, scripture_ref="John 3:16-20", tags=["faith"]
-    )
+    created = await _create_entry(client, scripture_ref="John 3:16-20", tags=["faith"])
     entry_id = created["id"]
 
     response = await client.delete(f"/api/v1/entries/{entry_id}")
@@ -502,9 +447,7 @@ async def test_delete_removes_entry_and_link_rows(
     # Tag links gone.
     tag_link_count = (
         await db_session.execute(
-            select(func.count())
-            .select_from(EntryTag)
-            .where(EntryTag.entry_id == entry_id)
+            select(func.count()).select_from(EntryTag).where(EntryTag.entry_id == entry_id)
         )
     ).scalar_one()
     assert tag_link_count == 0
@@ -514,15 +457,11 @@ async def test_delete_keeps_orphaned_tag_for_user(
     client: AsyncClient, bsb_loaded: None, db_session: AsyncSession
 ) -> None:
     await _register(client)
-    created = await _create_entry(
-        client, scripture_ref="John 3:16", tags=["lonely"]
-    )
+    created = await _create_entry(client, scripture_ref="John 3:16", tags=["lonely"])
     await client.delete(f"/api/v1/entries/{created['id']}")
 
     # Orphaned tag still in DB.
-    tag = (
-        await db_session.execute(select(Tag).where(Tag.name == "lonely"))
-    ).scalar_one_or_none()
+    tag = (await db_session.execute(select(Tag).where(Tag.name == "lonely"))).scalar_one_or_none()
     assert tag is not None
 
     # Visible in /tags with entry_count=0.
@@ -531,9 +470,7 @@ async def test_delete_keeps_orphaned_tag_for_user(
     assert lonely["entry_count"] == 0
 
 
-async def test_delete_unknown_entry_returns_404(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_delete_unknown_entry_returns_404(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.delete("/api/v1/entries/9999")
     assert response.status_code == 404

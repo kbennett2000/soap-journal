@@ -103,9 +103,7 @@ def _normalize(raw: str) -> str:
     return s
 
 
-def _canonical_string(
-    book: Book, chapter: int, start: int | None, end: int | None
-) -> str:
+def _canonical_string(book: Book, chapter: int, start: int | None, end: int | None) -> str:
     if start is None:
         return f"{book.name} {chapter}"
     if end is None or end == start:
@@ -129,9 +127,7 @@ def parse_reference(raw: str) -> ParsedReference:
         # Did the user type just a known book name without a chapter? Give
         # a specific message; otherwise the input is opaque garbage.
         if get_book_by_name(s) is not None:
-            raise ReferenceParseError(
-                f"reference is missing a chapter number: {raw!r}"
-            )
+            raise ReferenceParseError(f"reference is missing a chapter number: {raw!r}")
         raise ReferenceParseError(f"could not parse reference: {raw!r}")
 
     book_str = match.group("book").strip()
@@ -159,9 +155,7 @@ def parse_reference(raw: str) -> ParsedReference:
 
     start_verse = int(start_str)
     if start_verse < 1:
-        raise ReferenceParseError(
-            f"verse must be 1 or greater, got {start_verse}"
-        )
+        raise ReferenceParseError(f"verse must be 1 or greater, got {start_verse}")
 
     if end_str is None:
         return ParsedReference(

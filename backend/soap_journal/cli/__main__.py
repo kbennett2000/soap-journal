@@ -19,9 +19,7 @@ def main(argv: list[str] | None = None) -> int:
         "load-translation",
         help="Load a canonical Bible JSON file into the database.",
     )
-    load_parser.add_argument(
-        "path", help="Path to a canonical translation JSON file."
-    )
+    load_parser.add_argument("path", help="Path to a canonical translation JSON file.")
 
     args = parser.parse_args(argv)
     if args.command == "load-translation":

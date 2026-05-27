@@ -13,9 +13,7 @@ async def _register(client: AsyncClient, username: str = "alice") -> None:
     assert response.status_code == 201, response.text
 
 
-async def _make_entry(
-    client: AsyncClient, scripture_ref: str, tags: list[str]
-) -> dict:
+async def _make_entry(client: AsyncClient, scripture_ref: str, tags: list[str]) -> dict:
     response = await client.post(
         "/api/v1/entries",
         json={"scripture_ref": scripture_ref, "tags": tags},
@@ -42,17 +40,13 @@ async def test_tags_autocomplete_unauthenticated_returns_401(
 # ---- list ------------------------------------------------------------------
 
 
-async def test_tag_list_returns_empty_for_new_user(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_tag_list_returns_empty_for_new_user(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     body = (await client.get("/api/v1/tags")).json()
     assert body == {"tags": []}
 
 
-async def test_tag_list_counts_match_reality(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_tag_list_counts_match_reality(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _make_entry(client, "John 3:16", ["faith", "grace"])
     await _make_entry(client, "John 3:17", ["faith", "hope"])
@@ -75,9 +69,7 @@ async def test_tag_list_ordered_alphabetically_case_insensitive(
     assert names == ["Apple", "mountain", "zebra"]
 
 
-async def test_tag_list_scoped_to_user(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_tag_list_scoped_to_user(client: AsyncClient, bsb_loaded: None) -> None:
     # Alice creates an entry with the tag "faith".
     await _register(client, "alice")
     await _make_entry(client, "John 3:16", ["faith"])
@@ -119,9 +111,7 @@ async def test_autocomplete_orders_by_entry_count_desc(
     assert counts == [2, 1]
 
 
-async def test_autocomplete_case_insensitive_query(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_autocomplete_case_insensitive_query(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     await _make_entry(client, "John 3:16", ["Faith"])
 
@@ -142,9 +132,7 @@ async def test_autocomplete_returns_only_prefix_matches(
     assert names == ["faith"]
 
 
-async def test_autocomplete_caps_at_10(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_autocomplete_caps_at_10(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     for i in range(15):
         await _make_entry(client, f"John 3:{16 + (i % 5)}", [f"foo-{i:02d}"])
@@ -153,17 +141,13 @@ async def test_autocomplete_caps_at_10(
     assert len(body["tags"]) == 10
 
 
-async def test_autocomplete_missing_q_returns_422(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_autocomplete_missing_q_returns_422(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get("/api/v1/tags/autocomplete")
     assert response.status_code == 422
 
 
-async def test_autocomplete_empty_q_returns_422(
-    client: AsyncClient, bsb_loaded: None
-) -> None:
+async def test_autocomplete_empty_q_returns_422(client: AsyncClient, bsb_loaded: None) -> None:
     await _register(client)
     response = await client.get("/api/v1/tags/autocomplete?q=")
     assert response.status_code == 422

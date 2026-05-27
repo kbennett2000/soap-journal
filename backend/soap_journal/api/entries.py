@@ -23,7 +23,6 @@ from soap_journal.api.deps import get_current_user
 from soap_journal.core.entries import save_entry
 from soap_journal.core.entries_query import (
     AppliedFilterValues,
-    EntryFilters,
     apply_filters,
     resolve_filters,
 )
@@ -102,9 +101,7 @@ async def _build_response(db: AsyncSession, entry: Entry) -> EntryResponse:
 # ---- lookup helpers --------------------------------------------------------
 
 
-async def _own_entry_or_404(
-    db: AsyncSession, user_id: int, entry_id: int
-) -> Entry:
+async def _own_entry_or_404(db: AsyncSession, user_id: int, entry_id: int) -> Entry:
     entry = await db.get(Entry, entry_id)
     if entry is None or entry.user_id != user_id:
         raise_http(
@@ -167,9 +164,7 @@ async def _build_entries_batch(
     ).all()
     tags_by_entry: dict[int, list[EntryTagSummary]] = {}
     for entry_id, tag_id, name in tag_rows:
-        tags_by_entry.setdefault(entry_id, []).append(
-            EntryTagSummary(id=tag_id, name=name)
-        )
+        tags_by_entry.setdefault(entry_id, []).append(EntryTagSummary(id=tag_id, name=name))
 
     results: list[EntryResponse] = []
     for entry in entry_rows:
@@ -222,9 +217,7 @@ async def list_entries(
 
     # Query 1: filtered total. The same WHERE goes on both selects via
     # apply_filters (EXISTS subqueries, no DISTINCT required).
-    count_stmt = apply_filters(
-        select(func.count(Entry.id)).select_from(Entry), user.id, filters
-    )
+    count_stmt = apply_filters(select(func.count(Entry.id)).select_from(Entry), user.id, filters)
     total = (await db.execute(count_stmt)).scalar_one()
 
     # Query 2: filtered page joined with translations.code so the response

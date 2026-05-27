@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -7,7 +7,7 @@ from soap_journal.db.base import Base
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Entry(Base):
@@ -30,7 +30,8 @@ class Entry(Base):
         # RESTRICT on translations: an admin cannot delete a translation that
         # entries reference. Translation deletion isn't an endpoint in v1;
         # the constraint encodes the intent.
-        ForeignKey("translations.id", ondelete="RESTRICT"), nullable=False
+        ForeignKey("translations.id", ondelete="RESTRICT"),
+        nullable=False,
     )
     scripture_text: Mapped[str] = mapped_column(Text, nullable=False)
     observation: Mapped[str] = mapped_column(Text, nullable=False, default="")
