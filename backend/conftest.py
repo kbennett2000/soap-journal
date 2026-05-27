@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
 from soap_journal.config import Settings, get_settings  # noqa: E402
+from soap_journal.db import models as _models  # noqa: E402, F401  register models on Base.metadata
 from soap_journal.db.base import Base  # noqa: E402
 from soap_journal.db.session import get_db  # noqa: E402
 from soap_journal.main import create_app  # noqa: E402
