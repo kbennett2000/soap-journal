@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - NKJV parser (`python -m soap_journal.parsers.nkjv`) for users who have
   their own New King James Version PDF.
+- KJV parser (`python -m soap_journal.parsers.kjv`) with section heading
+  extraction — the first parser to populate the reader's heading display.
+- KJV (King James Version) bundled as a second out-of-box translation
+  alongside BSB. The side-by-side comparison view is now active on every
+  fresh install.
+- Docker entrypoint bootstraps each bundled translation independently
+  (idempotent per-translation, not all-or-nothing).
 - `bibles/` directory for user-provided copyrighted Bible source files
   (gitignored; `bibles/README.md` explains usage).
 - 11 new book abbreviation aliases (Deu, Rut, Sol, Joe, Amo, Oba, Mat,

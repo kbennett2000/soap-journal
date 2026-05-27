@@ -17,7 +17,7 @@ A self-hosted, offline-first SOAP (Scripture, Observation, Application, Prayer) 
 ## Features
 
 - SOAP-method journaling with auto-pulled Scripture text
-- Built-in Bible reader (Berean Standard Bible bundled; more translations via a parser architecture)
+- Built-in Bible reader (BSB and KJV bundled; more translations via a parser architecture)
 - Multi-user with simple username/password auth — admin can manage accounts
 - Search, tag, filter, and calendar view of your entries
 - "On this day in previous years" surfacing
@@ -43,7 +43,7 @@ docker compose up -d
 
 Open `http://<your-server-ip>:8045` from any device on your LAN. The first user to register becomes the admin.
 
-**What you get out of the box:** on first start, the server runs migrations and loads the BSB Bible automatically. You'll be ready to journal as soon as you register the first user.
+**What you get out of the box:** on first start, the server runs migrations and loads both the BSB and KJV Bibles automatically. The side-by-side translation comparison view is active from the start. You'll be ready to journal as soon as you register the first user.
 
 For a step-by-step walkthrough — installing Docker, finding your server's IP, first login — see the [install guide](docs/install/README.md). For everything else (the reader, journaling, tags, search, calendar, admin tasks, backups) see the [usage guide](docs/usage/README.md).
 
@@ -84,37 +84,42 @@ The most common issues are covered in [`docs/install/troubleshooting.md`](docs/i
 - **Forgot the admin password** — see [Forgot the admin password](docs/install/troubleshooting.md#i-forgot-the-admin-password).
 - **Want HTTPS?** v1 ships HTTP only on the assumption you're on a trusted LAN. Run a reverse proxy (Caddy, nginx, Traefik) in front of the container yourself — first-class HTTPS is a v2 topic.
 
-## Bundled Bible
+## Bundled Bibles
 
-This software bundles the **Berean Standard Bible (BSB)**, freely available
-for use and redistribution from <https://bereanbible.com/>. The original
-plain-text source and the BSB's attribution / public-domain notice live in
-[`bible-sources/bsb/`](bible-sources/bsb/) — see
-[`bible-sources/bsb/NOTICE`](bible-sources/bsb/NOTICE) for details.
+This software bundles two translations out of the box:
 
-The BSB is parsed and loaded into your database automatically on the
-container's first boot. To load it manually (e.g. in the non-Docker install
-path below), run:
+- **Berean Standard Bible (BSB)** — freely available from
+  <https://bereanbible.com/>. Source and attribution in
+  [`bible-sources/bsb/`](bible-sources/bsb/).
+- **King James Version (KJV)** — public domain. Source and attribution in
+  [`bible-sources/kjv/`](bible-sources/kjv/).
+
+Both are parsed and loaded into your database automatically on the
+container's first boot. Each translation is checked independently — if one
+is already loaded, only the missing one is parsed. To load them manually
+(e.g. in the non-Docker install path below), run:
 
 ```bash
 cd backend
 alembic upgrade head
 python -m soap_journal.parsers.bsb ../bible-sources/bsb/bsb.txt --out /tmp/bsb.json
 python -m soap_journal.cli load-translation /tmp/bsb.json
+python -m soap_journal.parsers.kjv ../bible-sources/kjv/kjv.pdf --out /tmp/kjv.json
+python -m soap_journal.cli load-translation /tmp/kjv.json
 ```
 
 ## Adding a Bible Translation
 
-To add another translation, write or use a parser that converts the source
-into the canonical JSON format (`backend/soap_journal/parsers/schema.py`),
-then load it:
+To add another translation beyond BSB and KJV, write or use a parser that
+converts the source into the canonical JSON format
+(`backend/soap_journal/parsers/schema.py`), then load it:
 
 ```bash
 python -m soap_journal.parsers.<translation> path/to/source --out data/translations/<code>.json
 python -m soap_journal.cli load-translation data/translations/<code>.json
 ```
 
-Once a second translation is loaded, the side-by-side comparison view in the reader becomes active.
+The side-by-side comparison view in the reader is active whenever two or more translations are loaded.
 
 ### NKJV
 
