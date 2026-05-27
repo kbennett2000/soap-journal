@@ -1,6 +1,10 @@
 import { http, HttpResponse } from "msw";
 
 import {
+  makeAdminUserList,
+  makeSettingsEnvelope,
+} from "@/test/utils/admin";
+import {
   makeChapter,
   makeTranslationDetail,
   makeTranslationList,
@@ -147,10 +151,73 @@ export const passageEntriesHandler = http.get(
   () => HttpResponse.json(makePassageEntriesResponse(), { status: 200 }),
 );
 
+// ---- admin ----------------------------------------------------------------
+
+export const adminUsersListHandler = http.get("/api/v1/admin/users", () => {
+  return HttpResponse.json(makeAdminUserList(), { status: 200 });
+});
+
+export const adminCreateUserHandler = http.post("/api/v1/admin/users", () => {
+  const envelope: AuthEnvelope = {
+    user: makeUser({ id: 1234, username: "newuser", is_admin: false }),
+  };
+  return HttpResponse.json(envelope, { status: 201 });
+});
+
+export const adminDeleteUserHandler = http.delete(
+  "/api/v1/admin/users/:userId",
+  () => new HttpResponse(null, { status: 204 }),
+);
+
+export const adminResetPasswordHandler = http.post(
+  "/api/v1/admin/users/:userId/reset-password",
+  () => new HttpResponse(null, { status: 204 }),
+);
+
+export const adminPromoteUserHandler = http.post(
+  "/api/v1/admin/users/:userId/promote",
+  ({ params }) => {
+    const id = Number.parseInt(String(params.userId), 10);
+    const envelope: AuthEnvelope = {
+      user: makeUser({ id, is_admin: true }),
+    };
+    return HttpResponse.json(envelope, { status: 200 });
+  },
+);
+
+export const adminDemoteUserHandler = http.post(
+  "/api/v1/admin/users/:userId/demote",
+  ({ params }) => {
+    const id = Number.parseInt(String(params.userId), 10);
+    const envelope: AuthEnvelope = {
+      user: makeUser({ id, is_admin: false }),
+    };
+    return HttpResponse.json(envelope, { status: 200 });
+  },
+);
+
+export const adminGetSettingsHandler = http.get(
+  "/api/v1/admin/settings",
+  () => HttpResponse.json(makeSettingsEnvelope(), { status: 200 }),
+);
+
+export const adminUpdateSettingsHandler = http.put(
+  "/api/v1/admin/settings",
+  async ({ request }) => {
+    const body = (await request.json()) as { open_registration: boolean };
+    return HttpResponse.json(
+      makeSettingsEnvelope({ open_registration: body.open_registration }),
+      { status: 200 },
+    );
+  },
+);
+
 // Order matters: MSW matches handlers in the order they're registered.
 // `/entries/calendar` and `/entries/on-this-day` must come BEFORE the
 // parameterized `/entries/:entryId` detail handler, otherwise the
 // detail handler would swallow them with entryId="calendar".
+// Admin handlers come AFTER auth handlers but their paths don't collide
+// with anything else.
 export const defaultHandlers = [
   meHandler,
   loginHandler,
@@ -170,4 +237,12 @@ export const defaultHandlers = [
   deleteEntryHandler,
   tagsListHandler,
   tagsAutocompleteHandler,
+  adminUsersListHandler,
+  adminCreateUserHandler,
+  adminDeleteUserHandler,
+  adminResetPasswordHandler,
+  adminPromoteUserHandler,
+  adminDemoteUserHandler,
+  adminGetSettingsHandler,
+  adminUpdateSettingsHandler,
 ];
