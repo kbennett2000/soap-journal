@@ -1,0 +1,16 @@
+{
+  "name": "soap-journal-capture-screenshots",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Playwright capture script for soap-journal documentation screenshots.",
+  "scripts": {
+    "capture": "tsx capture.ts",
+    "seed": "tsx seed.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^20.12.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
