@@ -106,3 +106,73 @@ export interface ResolvedReferenceResponse {
   reference: ResolvedReference;
   verses: VerseResponse[];
 }
+
+// ---- Entries + tags -------------------------------------------------------
+
+export interface EntryTagSummary {
+  id: number;
+  name: string;
+}
+
+export interface EntryResponse {
+  id: number;
+  title: string | null;
+  display_title: string;
+  entry_date: string; // ISO YYYY-MM-DD
+  scripture_ref: string;
+  translation_code: string;
+  scripture_text: string;
+  observation: string;
+  application: string;
+  prayer: string;
+  tags: EntryTagSummary[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EntryEnvelope {
+  entry: EntryResponse;
+}
+
+export interface AppliedFilters {
+  q: string | null;
+  book: string | null;
+  tag: string | null;
+  from_date: string | null;
+  to_date: string | null;
+}
+
+export interface EntryListResponse {
+  entries: EntryResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+  applied_filters: AppliedFilters;
+}
+
+export interface EntryCreateRequest {
+  title?: string | null;
+  entry_date?: string | null; // ISO YYYY-MM-DD
+  scripture_ref: string;
+  translation_code?: string | null;
+  observation?: string;
+  application?: string;
+  prayer?: string;
+  tags?: string[];
+}
+
+export type EntryUpdateRequest = EntryCreateRequest;
+
+export interface TagSummary {
+  id: number;
+  name: string;
+  entry_count: number;
+}
+
+export interface TagListResponse {
+  tags: TagSummary[];
+}
+
+export interface TagAutocompleteResponse {
+  tags: TagSummary[];
+}

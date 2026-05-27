@@ -5,6 +5,11 @@ import {
   makeTranslationDetail,
   makeTranslationList,
 } from "@/test/utils/bible";
+import {
+  makeEntryEnvelope,
+  makeEntryList,
+  makeTagList,
+} from "@/test/utils/entries";
 import { makeUser } from "@/test/utils/factories";
 import type { AuthEnvelope } from "@/types/api";
 
@@ -85,6 +90,39 @@ export const resolveHandler = http.get("/api/v1/bible/resolve", ({ request }) =>
   );
 });
 
+// ---- entries + tags -------------------------------------------------------
+
+export const entriesListHandler = http.get("/api/v1/entries", () => {
+  return HttpResponse.json(makeEntryList(), { status: 200 });
+});
+
+export const entryDetailHandler = http.get("/api/v1/entries/:entryId", ({ params }) => {
+  const id = Number.parseInt(String(params.entryId), 10);
+  return HttpResponse.json(makeEntryEnvelope({ id }), { status: 200 });
+});
+
+export const createEntryHandler = http.post("/api/v1/entries", () => {
+  return HttpResponse.json(makeEntryEnvelope({ id: 9999 }), { status: 201 });
+});
+
+export const updateEntryHandler = http.put("/api/v1/entries/:entryId", ({ params }) => {
+  const id = Number.parseInt(String(params.entryId), 10);
+  return HttpResponse.json(makeEntryEnvelope({ id }), { status: 200 });
+});
+
+export const deleteEntryHandler = http.delete("/api/v1/entries/:entryId", () => {
+  return new HttpResponse(null, { status: 204 });
+});
+
+export const tagsListHandler = http.get("/api/v1/tags", () => {
+  return HttpResponse.json(makeTagList(), { status: 200 });
+});
+
+export const tagsAutocompleteHandler = http.get(
+  "/api/v1/tags/autocomplete",
+  () => HttpResponse.json({ tags: [] }, { status: 200 }),
+);
+
 export const defaultHandlers = [
   meHandler,
   loginHandler,
@@ -94,4 +132,11 @@ export const defaultHandlers = [
   translationDetailHandler,
   chapterHandler,
   resolveHandler,
+  entriesListHandler,
+  entryDetailHandler,
+  createEntryHandler,
+  updateEntryHandler,
+  deleteEntryHandler,
+  tagsListHandler,
+  tagsAutocompleteHandler,
 ];

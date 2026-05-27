@@ -8,6 +8,19 @@ import { STORAGE_KEYS } from "@/lib/storage";
 import { server } from "@/test/msw/server";
 import { makeChapter } from "@/test/utils/bible";
 import { renderWithProviders } from "@/test/utils/renderWithProviders";
+import { useLocation } from "react-router-dom";
+
+function EntryNewStub(): JSX.Element {
+  const loc = useLocation();
+  const state = loc.state as
+    | { scriptureRef?: string; translationCode?: string }
+    | null;
+  return (
+    <div data-testid="new-entry-state">
+      {state?.scriptureRef ?? "(none)"} / {state?.translationCode ?? "(none)"}
+    </div>
+  );
+}
 
 function renderReader(initialEntries: string[]) {
   return renderWithProviders(
@@ -224,16 +237,25 @@ describe("ReaderPage", () => {
     expect(screen.getByRole("button", { name: /^next/i })).toBeDisabled();
   });
 
-  it("clicking a verse fires the coming-soon affordance", async () => {
+  it("clicking a verse navigates to /entries/new with the reference in state", async () => {
     const user = userEvent.setup();
-    renderReader(["/read/BSB/John/3"]);
-    await screen.findByTestId("verse-16");
+    renderWithProviders(
+      <Routes>
+        <Route
+          path="/read/:translationCode/:bookName/:chapterNumber"
+          element={<ReaderPage />}
+        />
+        <Route path="/entries/new" element={<EntryNewStub />} />
+      </Routes>,
+      { initialEntries: ["/read/BSB/John/3"] },
+    );
 
+    await screen.findByTestId("verse-16");
     await user.click(screen.getByTestId("verse-16"));
 
-    const toast = await screen.findByTestId("verse-toast");
-    expect(toast).toHaveTextContent(/coming soon/i);
-    expect(toast).toHaveTextContent(/john 3:16/i);
+    expect(await screen.findByTestId("new-entry-state")).toHaveTextContent(
+      "John 3:16 / BSB",
+    );
   });
 
   it("font-size change applies a Tailwind class and persists to localStorage", async () => {

@@ -90,9 +90,6 @@ function ReaderInner({
 
   const [fontSize, setFontSize] = useState<FontSize>(() => readFontSize());
   const [layout, setLayout] = useState<ReaderLayout>(() => readLayout());
-  const [verseToast, setVerseToast] = useState<{ verse: number; book: string } | null>(
-    null,
-  );
 
   // Parse ?range=16-20 as a memo from the URL. Anything malformed is
   // ignored. Memoized so the fade-timer effect below has a stable
@@ -167,7 +164,14 @@ function ReaderInner({
   }
 
   function handleVerseClick(verse: VerseResponse): void {
-    setVerseToast({ verse: verse.number, book: bookName });
+    // Hop to the new-entry form with the verse pre-filled. The form's
+    // ScripturePreview auto-pulls the text from the same ref.
+    navigate("/entries/new", {
+      state: {
+        scriptureRef: `${bookName} ${chapterNumber}:${verse.number}`,
+        translationCode,
+      },
+    });
   }
 
   // Keyboard navigation: left/right arrows for prev/next chapter. Skip
@@ -237,14 +241,6 @@ function ReaderInner({
         />
       )}
 
-      {verseToast && (
-        <VerseClickToast
-          book={verseToast.book}
-          verse={verseToast.verse}
-          chapter={chapterNumber}
-          onDismiss={() => setVerseToast(null)}
-        />
-      )}
     </div>
   );
 }
@@ -383,34 +379,6 @@ function ChapterNav({ previous, next, onNavigate }: ChapterNavProps): JSX.Elemen
         Next{next ? `: ${next.book_name} ${next.chapter_number}` : ""} →
       </button>
     </nav>
-  );
-}
-
-interface VerseClickToastProps {
-  book: string;
-  chapter: number;
-  verse: number;
-  onDismiss: () => void;
-}
-
-function VerseClickToast({
-  book,
-  chapter,
-  verse,
-  onDismiss,
-}: VerseClickToastProps): JSX.Element {
-  useEffect(() => {
-    const t = window.setTimeout(onDismiss, 3500);
-    return () => window.clearTimeout(t);
-  }, [onDismiss]);
-  return (
-    <div
-      role="status"
-      data-testid="verse-toast"
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-md bg-slate-900 px-4 py-2 text-sm text-white shadow-lg dark:bg-slate-100 dark:text-slate-900"
-    >
-      Create a SOAP entry from {book} {chapter}:{verse} — coming soon.
-    </div>
   );
 }
 
