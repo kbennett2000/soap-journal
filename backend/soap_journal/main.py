@@ -7,7 +7,9 @@ from soap_journal import __version__
 from soap_journal.api.admin import router as admin_router
 from soap_journal.api.auth import router as auth_router
 from soap_journal.api.bible import router as bible_router
+from soap_journal.api.entries import router as entries_router
 from soap_journal.api.health import router as health_router
+from soap_journal.api.tags import router as tags_router
 from soap_journal.config import get_settings
 
 
@@ -28,4 +30,6 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
     app.include_router(bible_router, prefix="/api/v1")
+    app.include_router(entries_router, prefix="/api/v1")
+    app.include_router(tags_router, prefix="/api/v1")
     return app
