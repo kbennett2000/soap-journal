@@ -132,13 +132,38 @@ def _read_pdf(path: Path) -> str:
 
 
 def _preprocess(text: str) -> list[str]:
-    """Normalize extracted text into logical lines."""
-    lines = text.replace("\f", "\n").splitlines()
-    return [
+    """Normalize extracted text into logical lines.
+
+    Different ``pdftotext`` builds format verse numbers differently:
+    Xpdf emits them inline with the verse text (``30And I have given``),
+    while poppler emits the number on its own line followed by the text.
+    Chapter markers are inline in both.  This step normalizes poppler's
+    standalone verse numbers into the inline form by merging a numeric
+    line into the following line — but only when that line begins with
+    non-digit text.  A standalone number followed by another number is a
+    census/count figure inside verse text (e.g. Ezra 2), not a verse
+    marker, so it is left alone to become continuation text.
+    """
+    lines = [
         line
-        for line in (raw.strip() for raw in lines)
+        for line in (raw.strip() for raw in text.replace("\f", "\n").splitlines())
         if line and line not in _WATERMARKS
     ]
+    merged: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if (
+            line.isdigit()
+            and i + 1 < len(lines)
+            and not lines[i + 1][0].isdigit()
+        ):
+            merged.append(line + lines[i + 1])
+            i += 2
+        else:
+            merged.append(line)
+            i += 1
+    return merged
 
 
 def _try_book_name(line: str) -> str | None:
