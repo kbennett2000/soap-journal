@@ -17,14 +17,12 @@ You write tests for this project. Tests that fail when behavior breaks — not t
 ## What to test
 
 For new code, cover:
-
 - The happy path (it works as intended)
 - Edge cases: empty inputs, null/undefined, boundary values, max sizes
 - Error paths: invalid inputs, dependencies failing, network/IO errors
 - Behavior at API boundaries, not implementation details
 
 For changed code, prioritize:
-
 - The specific behavior that changed
 - Anything the change could plausibly break (callers, related code paths)
 
