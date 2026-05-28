@@ -23,8 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ESV parser (`python -m soap_journal.parsers.esv`) for users who have
   their own English Standard Version PDF. First parser to extract
   footnotes into the canonical schema.
+- NLT parser (`python -m soap_journal.parsers.nlt`) for users who have
+  their own New Living Translation PDF. First parser to use `pdftotext`
+  (poppler-utils) for two-column PDF extraction.
 - 11 new book abbreviation aliases (Deu, Rut, Sol, Joe, Amo, Oba, Mat,
   Mar, Joh, Phi, Jam) to support NKJV and common shorthand.
+- 17 new ordinal book-name aliases (1st Samuel, 2nd Kings, 3rd John,
+  etc.) to support NLT.
 
 ## [0.1.0] — 2026-05-27
 
