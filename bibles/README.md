@@ -86,6 +86,46 @@ Bible, English Standard Version(R)), copyright (c) 2001 by Crossway,
 a publishing ministry of Good News Publishers. Used by permission.
 All rights reserved.
 
+### NLT (New Living Translation)
+
+**Source**: A 1,798-page two-column PDF of the NLT. The parser uses
+`pdftotext -raw` (from poppler-utils) instead of pypdf because the
+two-column layout requires column-first reading order.
+
+**Prerequisite**: Install poppler-utils (`apt install poppler-utils` on
+Debian/Ubuntu, `brew install poppler` on macOS, or download from
+the poppler website for Windows).
+
+1. Place the PDF at `bibles/nlt.pdf` (or any path you prefer).
+
+2. Run the parser to produce canonical JSON:
+
+   ```bash
+   cd backend
+   python -m soap_journal.parsers.nlt ../bibles/nlt.pdf --out ../data/translations/nlt.json
+   ```
+
+3. Load the JSON into the database:
+
+   ```bash
+   python -m soap_journal.cli load-translation ../data/translations/nlt.json
+   ```
+
+4. Restart the server (or refresh the browser). The NLT translation
+   will appear in the reader.
+
+**Footnotes**: The NLT print edition has extensive footnotes, but this
+particular PDF rendering does not preserve them. Footnote data is not
+available in the parsed output.
+
+**Verse numbering**: The NLT omits certain disputed verses (e.g.
+Acts 8:37, John 5:4, Mark 9:44). Verses are renumbered sequentially
+within each chapter to satisfy the canonical schema's 1..N invariant.
+
+**Copyright**: Holy Bible, New Living Translation, copyright (c) 1996,
+2004, 2015 by Tyndale House Foundation. Used by permission of Tyndale
+House Publishers, Carol Stream, Illinois 60188. All rights reserved.
+
 ## Adding Other Translations
 
 The general pattern is the same for any translation:
