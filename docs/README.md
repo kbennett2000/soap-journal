@@ -43,10 +43,11 @@ here so you know not to look for them:
 - **Dark-theme screenshots.** Every embedded screenshot is the light
   theme. The dark theme works, but capturing both is out of scope for
   v0.1.
-- **Loading non-BSB translations.** The parser architecture supports
-  any translation, but writing a parser is a developer task and the
-  user-facing docs only cover the bundled BSB. The README and the
-  admin docs hint at the loader CLI for those who want to dig in.
+- **Loading additional copyrighted translations.** 13 public-domain
+  translations ship and load automatically. Adding a copyrighted one you
+  own (ESV, NLT, NKJV) is documented in
+  [`../bibles/README.md`](../bibles/README.md), but it's a
+  command-line task, not a point-and-click one in the UI.
 - **Mobile-specific gestures (swipe between chapters, pull-to-refresh,
   etc.).** None are wired up in v0.1. The mobile UI is the responsive
   desktop UI; everything works via tap and on-screen buttons.
