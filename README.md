@@ -110,24 +110,31 @@ is already loaded, only the missing ones are parsed.
 
 ## Adding a Bible Translation
 
-To add another translation beyond BSB and KJV, write or use a parser that
-converts the source into the canonical JSON format
-(`backend/soap_journal/parsers/schema.py`), then load it:
+Beyond the 13 bundled translations, parsers are included for three popular
+copyrighted translations you can add if you have your own copy of the PDF:
+**NKJV**, **ESV**, and **NLT**.
+
+Drop the PDF into the gitignored `bibles/` directory, then parse and load
+it inside the running container. `./bibles` is bind-mounted to
+`/app/bibles`, so for example:
 
 ```bash
-python -m soap_journal.parsers.<translation> path/to/source --out data/translations/<code>.json
-python -m soap_journal.cli load-translation data/translations/<code>.json
+docker compose exec soap-journal \
+  python -m soap_journal.parsers.esv /app/bibles/esv.pdf --out /tmp/esv.json
+docker compose exec soap-journal \
+  python -m soap_journal.cli load-translation /tmp/esv.json
 ```
 
-The side-by-side comparison view in the reader is active whenever two or more translations are loaded.
+Step-by-step instructions for each of NKJV, ESV, and NLT — including the
+source format each expects and per-translation caveats — are in
+[`bibles/README.md`](bibles/README.md). The side-by-side comparison view
+is active out of the box (13 translations ship by default).
 
-### NKJV
-
-An NKJV parser is included. If you have the 1982 NKJV PDF, place it in
-the `bibles/` directory and follow the instructions in
-[`bibles/README.md`](bibles/README.md).
-
-**Note on copyright:** only translations you have the legal right to redistribute should be loaded onto a publicly-accessible instance. The BSB is permissively licensed; many modern translations (ESV, NIV, NASB, etc.) are not. Loading a copyrighted translation onto a server you control for personal use is between you and the publisher.
+**Note on copyright:** only translations you have the legal right to use
+should be loaded onto your instance. The 13 bundled translations are
+public domain or permissively licensed; many modern translations (ESV,
+NIV, NASB, etc.) are not. Loading a copyrighted translation onto a server
+you control for personal use is between you and the publisher.
 
 ## Manual install (without Docker)
 
