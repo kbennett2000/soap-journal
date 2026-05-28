@@ -1,5 +1,12 @@
 # soap-journal
 
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
+
 A self-hosted, offline-first SOAP (Scripture, Observation, Application, Prayer) journaling app with an integrated Bible reader. Designed to run on a home Ubuntu server over your local LAN — no internet required after install.
 
 **Status:** in development. Not yet released.
