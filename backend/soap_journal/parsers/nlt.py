@@ -113,12 +113,16 @@ def _read_pdf(path: Path) -> str:
     both columns (row-first), interleaving verses from left and right.
     ``pdftotext -raw`` walks column-first, preserving correct order.
     """
-    result = subprocess.run(
-        ["pdftotext", "-raw", str(path), "-"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["pdftotext", "-raw", str(path), "-"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=300,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise OSError("pdftotext timed out after 300 seconds") from exc
     if result.returncode != 0:
         raise OSError(
             f"pdftotext failed (exit {result.returncode}): "
@@ -279,8 +283,6 @@ def parse_lines(text: str) -> tuple[BooksData, list[str]]:
         book_name = _try_book_name(line)
         if book_name is not None:
             j = i + 1
-            while j < len(lines) and not lines[j]:
-                j += 1
             if j < len(lines):
                 next_line = lines[j]
                 is_chapter = False
@@ -404,7 +406,7 @@ def _split_merged_chapters(books_data: BooksData) -> None:
             books_data[book_name][ch_num] = merged[0]
             next_ch = ch_num + 1
             for seg in merged[1:]:
-                if next_ch <= max_ch:
+                if next_ch <= max_ch and next_ch not in books_data[book_name]:
                     books_data[book_name][next_ch] = seg
                     next_ch += 1
 
@@ -413,8 +415,9 @@ def build_canonical_translation(books_data: BooksData) -> CanonicalTranslation:
     """Assemble a validated CanonicalTranslation from parsed NLT data.
 
     The NLT omits certain disputed verses (e.g. Acts 8:37, John 5:4).
-    Verses are renumbered 1..N within each chapter so the canonical
-    schema's sequential-numbering invariant holds.
+    Missing verse numbers are filled with placeholder text so the
+    canonical schema's 1..N invariant holds and verse numbers stay
+    aligned with other translations.
     """
     canonical_books: list[CanonicalBook] = []
     for spec in ALL_BOOKS:
@@ -424,14 +427,21 @@ def build_canonical_translation(books_data: BooksData) -> CanonicalTranslation:
 
         chapters_sorted: list[CanonicalChapter] = []
         for chapter_number in sorted(chapters_dict.keys()):
-            verses = sorted(chapters_dict[chapter_number], key=lambda t: t[0])
+            raw = sorted(chapters_dict[chapter_number], key=lambda t: t[0])
+            if not raw:
+                continue
+            max_v = raw[-1][0]
+            verse_map = dict(raw)
+            canon_verses: list[CanonicalVerse] = []
+            for v in range(1, max_v + 1):
+                text = verse_map.get(v)
+                if text is None:
+                    text = "[verse not included in the NLT]"
+                canon_verses.append(CanonicalVerse(number=v, text=text))
             chapters_sorted.append(
                 CanonicalChapter(
                     number=chapter_number,
-                    verses=[
-                        CanonicalVerse(number=i, text=t)
-                        for i, (_, t) in enumerate(verses, start=1)
-                    ],
+                    verses=canon_verses,
                 )
             )
         canonical_books.append(
