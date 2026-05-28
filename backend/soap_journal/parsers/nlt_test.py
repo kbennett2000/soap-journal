@@ -247,6 +247,38 @@ def test_continuation_text_with_standalone_number() -> None:
     assert "74" in books["Ezra"][1][0][1]
 
 
+def test_poppler_standalone_verse_markers() -> None:
+    """Poppler emits verse numbers on their own line; they merge to inline."""
+    text = _make_nlt_text(
+        "Genesis",
+        "1In the beginning God created the heavens and the earth.",
+        "2",
+        "The earth was formless and empty.",
+        "3",
+        "Then God said, let there be light.",
+    )
+    books, _ = parse_lines(text)
+    assert len(books["Genesis"][1]) == 3
+    assert books["Genesis"][1][1] == (2, "The earth was formless and empty.")
+    assert books["Genesis"][1][2] == (3, "Then God said, let there be light.")
+
+
+def test_poppler_census_number_not_merged() -> None:
+    """A standalone number followed by another number (census/count) is
+    left as continuation text, not merged into a verse marker."""
+    text = _make_nlt_text(
+        "Ezra",
+        "1The descendants of Jeshua and Kadmiel . . .",
+        "74",
+        "2",
+        "The singers of the family of Asaph . . .",
+    )
+    books, _ = parse_lines(text)
+    # "74" stays as continuation text on verse 1; verse 2 is the singers line.
+    assert "74" in books["Ezra"][1][0][1]
+    assert books["Ezra"][1][1] == (2, "The singers of the family of Asaph . . .")
+
+
 def test_empty_input_raises() -> None:
     with pytest.raises(NltParseError, match="no verse lines found"):
         parse_lines("")

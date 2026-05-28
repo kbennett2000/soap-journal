@@ -1,8 +1,10 @@
 # 3. Reading the Bible
 
-soap-journal ships with the **Berean Standard Bible (BSB)**, a public-
-domain modern English translation. It's loaded automatically when the
-container first boots. The reader is the screen for actually reading it.
+soap-journal ships with 13 public-domain Bible translations — including
+the **Berean Standard Bible (BSB)**, the **King James Version (KJV)**, the
+**World English Bible (WEB)**, and **Young's Literal Translation (YLT)**.
+They're all loaded automatically when the container first boots. The
+reader is the screen for actually reading them.
 
 Open it from the dashboard's **Open the reader →** button, by typing a
 reference into the jump bar, or by clicking the soap-journal title and
@@ -21,11 +23,12 @@ Across the top of the reader:
 - **Jump bar** — type a free-form reference (`John 3:16`, `1 Cor 13`,
   `Rom 8:28-30`). Press Enter or click **Go**.
 - **Translation badge** (small badge with the translation code, e.g.
-  `BSB`) — shows which translation is currently being displayed.
-- **Compare translations** (greyed out by default) — becomes active
-  once a second translation is loaded onto your instance. v0.1 ships
-  with only BSB, so the button is greyed out as a placeholder for
-  what's coming.
+  `BSB`) — shows which translation is currently being displayed, and
+  lets you switch to any other loaded translation.
+- **Compare translations** — opens a side-by-side view so you can read
+  two translations in parallel. It's active out of the box since the app
+  ships with 13 translations. (If you've loaded an additional copyrighted
+  translation like ESV or NLT, it shows up here too.)
 - **Settings** (gear icon) — opens a small popover with font-size and
   layout options. See [Reader settings](#reader-settings) below.
 

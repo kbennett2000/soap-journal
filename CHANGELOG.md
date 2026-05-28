@@ -36,6 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   twelve PDFMaker translations share one codebase.
 - Docker entrypoint now bootstraps all 13 bundled translations with
   per-translation progress logging and failure isolation.
+- `poppler-utils` added to the runtime image and `./bibles` bind-mounted
+  read-only at `/app/bibles`, so user-provided copyrighted PDFs (ESV,
+  NLT, NKJV) can be parsed and loaded entirely inside the container.
+  `bibles/README.md` rewritten with step-by-step Docker instructions.
+
+### Fixed
+
+- NLT parser now handles both `pdftotext` builds (Xpdf inline verse
+  markers and poppler standalone markers), so it works in-container.
 
 ## [0.1.0] — 2026-05-27
 

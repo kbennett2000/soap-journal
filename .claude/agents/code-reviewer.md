@@ -34,7 +34,6 @@ Group findings by severity. Skip categories with no findings.
 - **NIT** — style preferences, minor improvements.
 
 For each finding:
-
 - `path/to/file.ts:42` — one-line summary
 - Why it's a problem
 - Concrete suggested fix (code snippet if non-obvious)

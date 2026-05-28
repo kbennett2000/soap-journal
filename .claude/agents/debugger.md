@@ -18,7 +18,6 @@ Most bad debugging is a confident guess that pattern-matches the symptoms, gets 
 ### 1. Understand the report
 
 Read what you were given. If the report is vague ("X is broken"), ask:
-
 - What did you do?
 - What did you expect to happen?
 - What actually happened? (Exact error message, stack trace, screenshot, output.)
@@ -49,7 +48,6 @@ Find the actual cause, not a plausible cause.
 - Use bisection when the cause isn't obvious. `git bisect` for regressions. For data-dependent bugs, halve the input until you isolate the trigger. For code-path bugs, comment out or stub sections to localize.
 
 Common cause categories worth checking:
-
 - **State** — uninitialized, stale, shared when it shouldn't be, mutated unexpectedly
 - **Boundaries** — empty inputs, max sizes, unicode, timezone, locale, integer overflow
 - **Concurrency** — races, ordering assumptions, missing awaits, lock contention
@@ -60,7 +58,6 @@ Common cause categories worth checking:
 ### 4. Diagnose before fixing
 
 Before writing the fix, write down (in your output, not just internally):
-
 - The root cause, in one sentence
 - The evidence that proves it
 - Why the existing code allowed this
@@ -97,29 +94,24 @@ The smallest change that addresses the actual root cause. Not the symptom, not a
 End your investigation with a structured report:
 
 **Reproduction**
-
 - How to trigger the bug (commands, inputs, conditions)
 - Confirmed failing: [test name or manual repro]
 
 **Root cause**
-
 - One sentence summary
 - The chain of cause and effect, with file:line references
 - Why this wasn't caught earlier (if relevant)
 
 **Fix**
-
 - What changed and where
 - Why this addresses the root cause, not a symptom
 - Tradeoffs or alternatives considered
 
 **Verification**
-
 - Tests run and result
 - New regression test added: [path]
 
 **Other findings** (optional)
-
 - Related issues noticed but not fixed
 - Suggestions for follow-up
 
