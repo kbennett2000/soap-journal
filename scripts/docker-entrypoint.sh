@@ -9,9 +9,9 @@
 #
 # 1. chown /data to the soap user (idempotent).
 # 2. Run pending Alembic migrations (fail fast if they error).
-# 3. Bootstrap bundled translations (BSB and KJV). Each is checked and
-#    loaded independently — if BSB is already present but KJV is not,
-#    only KJV is parsed and loaded. Fully idempotent.
+# 3. Bootstrap all bundled translations. Each is checked and loaded
+#    independently — a failure in one does not block the others.
+#    Fully idempotent: already-loaded translations are skipped.
 # 4. exec the CMD so SIGTERM from `docker stop` reaches uvicorn directly.
 #
 set -euo pipefail
@@ -56,37 +56,51 @@ with sqlite3.connect(db_path) as conn:
 PY
 }
 
-# ---- BSB bootstrap ----
+TOTAL=13
+N=1
+
+# ---- BSB bootstrap (text format, different parser) ----
 BSB_SOURCE="/app/bible-sources/bsb/bsb.txt"
 BSB_JSON="/tmp/bsb.json"
 
 if [[ "$(translation_loaded BSB)" != "yes" ]]; then
-    echo "[entrypoint] parsing bundled BSB"
+    echo "[entrypoint] (${N}/${TOTAL}) parsing BSB..."
     python -m soap_journal.parsers.bsb "${BSB_SOURCE}" --out "${BSB_JSON}"
-    echo "[entrypoint] loading BSB into the database"
+    echo "[entrypoint] (${N}/${TOTAL}) loading BSB into the database"
     python -m soap_journal.cli load-translation "${BSB_JSON}"
     rm -f "${BSB_JSON}"
+    echo "[entrypoint] (${N}/${TOTAL}) BSB loaded"
 else
-    echo "[entrypoint] BSB already loaded — skipping"
+    echo "[entrypoint] (${N}/${TOTAL}) BSB already loaded — skipping"
 fi
+N=$((N + 1))
 
-# ---- KJV bootstrap ----
-KJV_SOURCE="/app/bible-sources/kjv/kjv.pdf"
-KJV_JSON="/tmp/kjv.json"
+# ---- PDFMaker-format translations bootstrap ----
+# All PDFMaker-format translations share the same parser invocation
+# pattern. Each is independent: a failure in one does not block others.
+PDFMAKER_TRANSLATIONS="KJV AKJV ASV CPDV DBT DRB ERV JPS SLT WBT WEB YLT"
 
-if [[ "$(translation_loaded KJV)" != "yes" ]]; then
-    if [[ -f "${KJV_SOURCE}" ]]; then
-        echo "[entrypoint] parsing bundled KJV"
-        python -m soap_journal.parsers.kjv "${KJV_SOURCE}" --out "${KJV_JSON}"
-        echo "[entrypoint] loading KJV into the database"
-        python -m soap_journal.cli load-translation "${KJV_JSON}"
-        rm -f "${KJV_JSON}"
+for CODE in ${PDFMAKER_TRANSLATIONS}; do
+    LOWER_CODE=$(echo "${CODE}" | tr '[:upper:]' '[:lower:]')
+    SOURCE="/app/bible-sources/${LOWER_CODE}/${LOWER_CODE}.pdf"
+    JSON="/tmp/${LOWER_CODE}.json"
+
+    if [[ "$(translation_loaded "${CODE}")" == "yes" ]]; then
+        echo "[entrypoint] (${N}/${TOTAL}) ${CODE} already loaded — skipping"
+    elif [[ ! -f "${SOURCE}" ]]; then
+        echo "[entrypoint] (${N}/${TOTAL}) ${CODE} source not found — skipping"
     else
-        echo "[entrypoint] KJV source not found at ${KJV_SOURCE} — skipping"
+        echo "[entrypoint] (${N}/${TOTAL}) parsing ${CODE}..."
+        if python -m "soap_journal.parsers.${LOWER_CODE}" "${SOURCE}" --out "${JSON}" \
+           && python -m soap_journal.cli load-translation "${JSON}"; then
+            echo "[entrypoint] (${N}/${TOTAL}) ${CODE} loaded"
+        else
+            echo "[entrypoint] WARNING: ${CODE} failed — continuing"
+        fi
+        rm -f "${JSON}"
     fi
-else
-    echo "[entrypoint] KJV already loaded — skipping"
-fi
+    N=$((N + 1))
+done
 
 echo "[entrypoint] starting: $*"
 exec "$@"
