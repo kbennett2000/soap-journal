@@ -34,8 +34,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # gosu lets the entrypoint start as root (just long enough to fix bind-mount
 # ownership on /data) and then drop to the unprivileged soap user before
 # exec'ing uvicorn.
+# poppler-utils provides pdftotext, which the NLT parser needs to extract
+# its two-column PDF. The other parsers use pypdf (a Python dep).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gosu \
+    && apt-get install -y --no-install-recommends gosu poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user. UID 1000 matches the default Ubuntu host UID so the
