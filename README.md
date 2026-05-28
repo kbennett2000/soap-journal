@@ -30,7 +30,7 @@ A self-hosted, offline-first SOAP (Scripture, Observation, Application, Prayer) 
 
 - Ubuntu (or any Linux that runs Docker)
 - Docker and Docker Compose
-- ~500 MB disk for the app and bundled Bible text
+- ~1 GB disk for the app and bundled Bible text
 
 ## Quick Start
 
@@ -43,7 +43,7 @@ docker compose up -d
 
 Open `http://<your-server-ip>:8045` from any device on your LAN. The first user to register becomes the admin.
 
-**What you get out of the box:** on first start, the server runs migrations and loads both the BSB and KJV Bibles automatically. The side-by-side translation comparison view is active from the start. You'll be ready to journal as soon as you register the first user.
+**What you get out of the box:** on first start, the server loads 13 public-domain Bible translations automatically: BSB, KJV, AKJV, ASV, CPDV, DBT, DRB, ERV, JPS, SLT, WBT, WEB, and YLT. The side-by-side translation comparison view is active from the start. First boot takes several minutes while translations are parsed and loaded; subsequent restarts are fast.
 
 For a step-by-step walkthrough — installing Docker, finding your server's IP, first login — see the [install guide](docs/install/README.md). For everything else (the reader, journaling, tags, search, calendar, admin tasks, backups) see the [usage guide](docs/usage/README.md).
 
@@ -86,27 +86,27 @@ The most common issues are covered in [`docs/install/troubleshooting.md`](docs/i
 
 ## Bundled Bibles
 
-This software bundles two translations out of the box:
+This software bundles 13 public-domain translations out of the box:
 
-- **Berean Standard Bible (BSB)** — freely available from
-  <https://bereanbible.com/>. Source and attribution in
-  [`bible-sources/bsb/`](bible-sources/bsb/).
-- **King James Version (KJV)** — public domain. Source and attribution in
-  [`bible-sources/kjv/`](bible-sources/kjv/).
+| Code | Translation | License |
+|------|------------|---------|
+| BSB | Berean Standard Bible | Permissive |
+| KJV | King James Version | Public domain |
+| AKJV | American King James Version | Public domain |
+| ASV | American Standard Version (1901) | Public domain |
+| CPDV | Catholic Public Domain Version | Public domain |
+| DBT | Darby Bible Translation (1890) | Public domain |
+| DRB | Douay-Rheims Bible | Public domain |
+| ERV | English Revised Version (1885) | Public domain |
+| JPS | JPS Tanakh / Weymouth NT | Public domain |
+| SLT | Smith's Literal Translation (1876) | Public domain |
+| WBT | Webster's Bible Translation (1833) | Public domain |
+| WEB | World English Bible | Public domain |
+| YLT | Young's Literal Translation (1898) | Public domain |
 
-Both are parsed and loaded into your database automatically on the
+All are parsed and loaded into your database automatically on the
 container's first boot. Each translation is checked independently — if one
-is already loaded, only the missing one is parsed. To load them manually
-(e.g. in the non-Docker install path below), run:
-
-```bash
-cd backend
-alembic upgrade head
-python -m soap_journal.parsers.bsb ../bible-sources/bsb/bsb.txt --out /tmp/bsb.json
-python -m soap_journal.cli load-translation /tmp/bsb.json
-python -m soap_journal.parsers.kjv ../bible-sources/kjv/kjv.pdf --out /tmp/kjv.json
-python -m soap_journal.cli load-translation /tmp/kjv.json
-```
+is already loaded, only the missing ones are parsed.
 
 ## Adding a Bible Translation
 
