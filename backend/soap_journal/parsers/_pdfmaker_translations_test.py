@@ -55,7 +55,7 @@ def test_get_config_raises_for_unknown() -> None:
 
 
 def test_source_directories_exist() -> None:
-    sources_dir = Path(__file__).parents[2] / "bible-sources"
+    sources_dir = Path(__file__).parents[3] / "bible-sources"
     for cfg in PDFMAKER_CONFIGS.values():
         code_dir = sources_dir / cfg.code.lower()
         assert code_dir.is_dir(), f"missing directory: {code_dir}"
