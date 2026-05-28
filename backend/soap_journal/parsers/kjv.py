@@ -36,18 +36,19 @@ from __future__ import annotations
 
 from soap_journal.parsers._pdfmaker_translations import get_config
 from soap_journal.parsers.pdfmaker_format import (
-    BooksData,  # noqa: F401 — re-exported for type compatibility
-    HeadingsData,  # noqa: F401
+    BooksData,
+    HeadingsData,
     PdfMakerParseError,
     build_canonical_translation as _build_impl,
-    is_likely_heading as _is_likely_heading,
+    is_likely_heading as _is_likely_heading,  # noqa: F401 — re-exported for tests
     make_cli_main,
     parse_lines as _parse_lines_impl,
     parse_pdfmaker_source,
-    read_pdf as _read_pdf,
-    split_verses as _split_verses,
-    write_canonical_json as _write_canonical_json,
+    read_pdf as _read_pdf,  # noqa: F401 — re-exported for tests
+    split_verses as _split_verses,  # noqa: F401 — re-exported for tests
+    write_canonical_json as _write_canonical_json,  # noqa: F401 — re-exported for tests
 )
+from soap_journal.parsers.schema import CanonicalTranslation
 
 _CONFIG = get_config("KJV")
 
@@ -66,12 +67,12 @@ def parse_lines(text: str) -> tuple[BooksData, HeadingsData, list[str]]:
 
 def build_canonical_translation(
     books_data: BooksData, headings_data: HeadingsData
-) -> ...:
+) -> CanonicalTranslation:
     """Build KJV canonical translation (backward-compatible wrapper)."""
     return _build_impl(books_data, headings_data, _CONFIG)
 
 
-def parse_kjv_source(text: str) -> tuple:
+def parse_kjv_source(text: str) -> tuple[CanonicalTranslation, list[str]]:
     """Parse KJV text into a fully-validated CanonicalTranslation."""
     return parse_pdfmaker_source(text, _CONFIG)
 
