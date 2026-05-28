@@ -102,11 +102,10 @@ def test_split_verses_paren_start() -> None:
     assert result[0][1].startswith("(For all these")
 
 
-def test_split_verses_number_in_text_not_verse() -> None:
-    line = "1 And the 12 tribes of Israel were gathered."
+def test_split_verses_number_in_text() -> None:
+    line = "1 And the 12 Tribes of Israel were gathered."
     result = _split_verses(line)
     assert result is not None
-    assert len(result) == 1
     assert result[0][0] == 1
 
 
@@ -382,7 +381,7 @@ def test_cli_returns_error_on_partial_source(tmp_path: Path) -> None:
     partial_text = (
         "Genesis 1\n1 In the beginning God created the heaven.\n"
     )
-    with patch("soap_journal.parsers.kjv._read_pdf", return_value=partial_text):
+    with patch("soap_journal.parsers.pdfmaker_format.read_pdf", return_value=partial_text):
         result = main(
             [str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")]
         )

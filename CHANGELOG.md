@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Mar, Joh, Phi, Jam) to support NKJV and common shorthand.
 - 17 new ordinal book-name aliases (1st Samuel, 2nd Kings, 3rd John,
   etc.) to support NLT.
+- Eleven additional public-domain translations bundled by default
+  (AKJV, ASV, CPDV, DBT, DRB, ERV, JPS, SLT, WBT, WEB, YLT).
+  Refactored KJV parser into a shared PDFMaker-format module so all
+  twelve PDFMaker translations share one codebase.
+- Docker entrypoint now bootstraps all 13 bundled translations with
+  per-translation progress logging and failure isolation.
 
 ## [0.1.0] — 2026-05-27
 
