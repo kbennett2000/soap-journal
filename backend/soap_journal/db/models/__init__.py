@@ -1,4 +1,5 @@
 from soap_journal.db import fts as _fts  # noqa: F401  attach FTS5 create/drop DDL hooks
+from soap_journal.db.models.annotation import Annotation
 from soap_journal.db.models.book import Book
 from soap_journal.db.models.chapter import Chapter
 from soap_journal.db.models.cross_reference import CrossReference
@@ -15,6 +16,7 @@ from soap_journal.db.models.user_session import UserSession
 from soap_journal.db.models.verse import Verse
 
 __all__ = [
+    "Annotation",
     "Book",
     "Chapter",
     "CrossReference",
