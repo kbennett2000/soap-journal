@@ -123,3 +123,36 @@ highlight layer in 5b (open item for 5c).
 error toast / re-open on failure. The popover clamps its left edge only (right-edge overflow at
 the viewport edge) and is a `role="dialog"` without a focus trap (Escape-to-dismiss is wired in
 5b; full focus management is 5c). Compare panes don't wire the highlight layer.
+
+---
+
+## Cycle 5c-1 addendum — multi-verse highlight create
+
+**Status:** Implemented (2026-06-02). Frontend, single-chapter multi-verse. Overlap `+N` stacking is
+5c-2; the edit panel is 5c-3; touch is 5c-5.
+
+5b refused cross-verse selections on create; 5c-1 handles them within one chapter. Most of the work
+was already in place from 5b: `rangeToVerseSelection` already resolved a multi-verse range to
+`(verse_start, char_start)..(verse_end, char_end)` — the start offset measured in `verse_start`'s
+coordinate space and the **end offset in `verse_end`'s** (two independent `offsetWithinVerse` walks);
+and `highlightSpansForVerse` + `buildVerseParts` already projected a multi-verse annotation onto each
+verse (partial tail of `verse_start`, full middle verses, partial head of `verse_end`). 5c-1:
+
+- **Removed the single-verse create gate** in `ChapterContent.handleMouseUp` — any non-null
+  `VerseSelection` now opens the create popover; all four coordinates pass straight through to the 5a
+  `POST` (the schema already carries `verse_start..verse_end`). Single-highlight Remove already works
+  for a multi-verse highlight: every covered run carries `data-highlight-id={id}`, so clicking any of
+  them removes the whole annotation with one `DELETE`.
+- **Chapter-boundary guard** (`rangeToVerseSelection`): a selection whose ends resolve to different
+  `[data-chapter]` elements is refused (the offsets would index different coordinate spaces). The
+  reader renders one chapter (`<article data-chapter="{code}/{book}/{n}">`), so this can't happen in
+  the single pane today; the guard is defensive and skipped when no `[data-chapter]` ancestor exists
+  (bare unit-test DOM). Identity comparison of the two chapter elements, not the key string.
+
+**Tested** (the coordinate math directly, per the 5b review's bug class): a 2→4-verse selection
+resolves with the end offset in verse 4's space (a discriminating assertion — a bug measuring it in
+verse 2's space would fall back to verse 2's length); a backward multi-verse selection normalizes; a
+chapter-crossing selection is refused; render paints tail/full/head across the right verses
+coexisting with a mid-verse marker and respects the translation filter; multi-verse create POSTs all
+four coords (including the legitimate `char_end < char_start` cross-verse ordering); clicking any
+covered span removes the whole multi-verse highlight. typecheck + lint + 195 tests green.

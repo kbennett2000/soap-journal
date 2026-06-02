@@ -103,9 +103,10 @@ export function ChapterContent({
     // non-null value is a real drag. (Don't gate on charEnd > charStart: across
     // verses those offsets index different verses and can be in any order.)
     if (selection) {
-      // Single-verse → offer to create; cross-verse is out of scope for 5b, so
-      // refuse (close any popover).
-      if (selection.verseStart === selection.verseEnd && onCreateHighlight) {
+      // Single- OR multi-verse (within one chapter) → offer to create (5c-1).
+      // `rangeToVerseSelection` already refuses selections that cross a chapter
+      // boundary, so any non-null selection here is in-chapter.
+      if (onCreateHighlight) {
         setPopover({
           mode: "create",
           selection,
@@ -164,6 +165,7 @@ export function ChapterContent({
   return (
     <article
       data-testid="chapter-content"
+      data-chapter={`${chapter.translation_code}/${chapter.book.name}/${chapter.chapter_number}`}
       onMouseUp={handleMouseUp}
       className={`prose prose-slate max-w-none dark:prose-invert ${sizeClass}`}
     >

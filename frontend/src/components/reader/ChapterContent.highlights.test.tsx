@@ -24,6 +24,39 @@ function netChapterWithMarker(): ChapterResponse {
   });
 }
 
+// Three NET verses; verse 17 carries an inline note marker so multi-verse
+// coverage can be checked to coexist with a marker in a middle verse.
+const VERSE_16 = "For God so loved the world."; // slice(8) = "so loved the world."
+const VERSE_17 = "that he gave his only Son,";
+const VERSE_18 = "whoever believes in him."; // slice(0,8) = "whoever "
+
+function netMultiVerseChapter(): ChapterResponse {
+  return makeChapter({
+    translationCode: "NET",
+    bookName: "John",
+    chapterNumber: 3,
+    verses: [
+      makeVerse({ id: 16, number: 16, text: VERSE_16 }),
+      makeVerse({
+        id: 17,
+        number: 17,
+        text: VERSE_17,
+        footnotes: [
+          makeFootnote({ id: 9, note_type: "tn", char_offset: 5, ordinal: 0, text: "tn body" }),
+        ],
+      }),
+      makeVerse({ id: 18, number: 18, text: VERSE_18 }),
+    ],
+  });
+}
+
+/** Concatenated text of every highlighted run within a verse element. */
+function highlightedTextOf(verseEl: HTMLElement): string {
+  return Array.from(verseEl.querySelectorAll("[data-highlight-id]"))
+    .map((s) => s.textContent)
+    .join("");
+}
+
 function renderContent(
   chapter: ChapterResponse,
   props: Partial<React.ComponentProps<typeof ChapterContent>> = {},
@@ -88,6 +121,49 @@ describe("ChapterContent — highlight render", () => {
     expect(container.querySelectorAll("[data-highlight-id]")).toHaveLength(0);
     expect(screen.getByTestId("verse-16")).toHaveTextContent("For God so loved the world.");
   });
+
+  it("paints a multi-verse highlight as tail / full middle / head across the right verses", () => {
+    const annotation = makeAnnotation({
+      id: 7,
+      translation_code: "NET",
+      book: "John",
+      chapter: 3,
+      verse_start: 16,
+      char_start: 8, // verse 16: from "so loved the world."
+      verse_end: 18,
+      char_end: 8, // verse 18: through "whoever "
+      color: "green",
+    });
+    renderContent(netMultiVerseChapter(), { annotations: [annotation] });
+
+    // verse_start: partial TAIL (char_start..end).
+    expect(highlightedTextOf(screen.getByTestId("verse-16"))).toBe("so loved the world.");
+    // middle verse: FULL coverage (marker excluded from text, both runs highlighted).
+    expect(highlightedTextOf(screen.getByTestId("verse-17"))).toBe(VERSE_17);
+    expect(within(screen.getByTestId("verse-17")).getByTestId("note-marker")).toBeInTheDocument();
+    // verse_end: partial HEAD (0..char_end).
+    expect(highlightedTextOf(screen.getByTestId("verse-18"))).toBe("whoever ");
+
+    // Every covered run resolves back to the one annotation.
+    for (const verse of ["verse-16", "verse-17", "verse-18"]) {
+      for (const span of screen.getByTestId(verse).querySelectorAll("[data-highlight-id]")) {
+        expect(span.getAttribute("data-highlight-id")).toBe("7");
+      }
+    }
+  });
+
+  it("hides a multi-verse highlight made in a different translation", () => {
+    const kjv = makeAnnotation({
+      id: 8,
+      translation_code: "KJV",
+      verse_start: 16,
+      verse_end: 18,
+      char_start: 0,
+      char_end: 4,
+    });
+    const { container } = renderContent(netMultiVerseChapter(), { annotations: [kjv] });
+    expect(container.querySelectorAll("[data-highlight-id]")).toHaveLength(0);
+  });
 });
 
 describe("ChapterContent — create flow", () => {
@@ -127,51 +203,66 @@ describe("ChapterContent — create flow", () => {
     expect(screen.queryByTestId("highlight-popover")).not.toBeInTheDocument();
   });
 
-  it("refuses a cross-verse selection (no popover)", () => {
+  it("opens the popover for a MULTI-verse selection and POSTs all four coordinates", () => {
     const onCreateHighlight = vi.fn();
-    renderContent(netChapterWithMarker(), {
+    renderContent(netMultiVerseChapter(), {
       annotations: [],
       onCreateHighlight,
-      resolveSelectionFn: () => ({ ...singleVerseSelection, verseEnd: 17 }),
-    });
-
-    fireEvent.mouseUp(screen.getByTestId("chapter-content"));
-    expect(screen.queryByTestId("highlight-popover")).not.toBeInTheDocument();
-    expect(onCreateHighlight).not.toHaveBeenCalled();
-  });
-
-  it("refuses a cross-verse selection whose end offset is smaller than its start", () => {
-    // Across verses charStart/charEnd index different verses, so charEnd <
-    // charStart is a legitimate ordering — it must still be refused, not
-    // mistaken for a collapsed click that could open the remove popover.
-    const onCreateHighlight = vi.fn();
-    const onRemoveHighlight = vi.fn();
-    const annotation = makeAnnotation({
-      id: 42,
-      translation_code: "NET",
-      book: "John",
-      chapter: 3,
-      verse_start: 16,
-      verse_end: 16,
-      char_start: 0,
-      char_end: 5,
-    });
-    renderContent(netChapterWithMarker(), {
-      annotations: [annotation],
-      onCreateHighlight,
-      onRemoveHighlight,
       resolveSelectionFn: () => ({
-        ...singleVerseSelection,
-        verseEnd: 17,
+        verseStart: 16,
+        verseEnd: 18,
         charStart: 8,
-        charEnd: 2,
+        charEnd: 8,
+        rect: { top: 100, left: 50, width: 40, height: 16 },
       }),
     });
 
     fireEvent.mouseUp(screen.getByTestId("chapter-content"));
-    expect(screen.queryByTestId("highlight-popover")).not.toBeInTheDocument();
-    expect(onCreateHighlight).not.toHaveBeenCalled();
-    expect(onRemoveHighlight).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(screen.getByTestId("highlight-popover")).getByRole("button", {
+        name: "Highlight Blue",
+      }),
+    );
+
+    expect(onCreateHighlight).toHaveBeenCalledWith({
+      translation_code: "NET",
+      book: "John",
+      chapter: 3,
+      verse_start: 16,
+      verse_end: 18,
+      char_start: 8,
+      char_end: 8,
+      color: "blue",
+    });
+  });
+
+  it("creates a multi-verse highlight whose end offset is smaller than its start", () => {
+    // Across verses charStart/charEnd index DIFFERENT verses, so charEnd <
+    // charStart is a legitimate ordering — it must create, not be mistaken for a
+    // collapsed click (the bug class 5b's review caught, now exercised multi-verse).
+    const onCreateHighlight = vi.fn();
+    renderContent(netMultiVerseChapter(), {
+      annotations: [],
+      onCreateHighlight,
+      resolveSelectionFn: () => ({
+        verseStart: 16,
+        verseEnd: 17,
+        charStart: 20,
+        charEnd: 4,
+        rect: { top: 100, left: 50, width: 40, height: 16 },
+      }),
+    });
+
+    fireEvent.mouseUp(screen.getByTestId("chapter-content"));
+    fireEvent.click(
+      within(screen.getByTestId("highlight-popover")).getByRole("button", {
+        name: "Highlight Yellow",
+      }),
+    );
+
+    expect(onCreateHighlight).toHaveBeenCalledWith(
+      expect.objectContaining({ verse_start: 16, verse_end: 17, char_start: 20, char_end: 4 }),
+    );
   });
 
   it("dismisses the popover on Escape", () => {
@@ -216,5 +307,40 @@ describe("ChapterContent — remove flow", () => {
 
     expect(onRemoveHighlight).toHaveBeenCalledWith(42);
     expect(screen.queryByTestId("highlight-popover")).not.toBeInTheDocument();
+  });
+
+  it("removes a whole multi-verse highlight when any covered span is clicked", () => {
+    const annotation: Annotation = makeAnnotation({
+      id: 71,
+      translation_code: "NET",
+      book: "John",
+      chapter: 3,
+      verse_start: 16,
+      char_start: 8,
+      verse_end: 18,
+      char_end: 8,
+    });
+    const onRemoveHighlight = vi.fn();
+    renderContent(netMultiVerseChapter(), {
+      annotations: [annotation],
+      onRemoveHighlight,
+      resolveSelectionFn: () => null,
+    });
+
+    // Click a covered span in the MIDDLE verse — still removes the whole row.
+    const span = screen
+      .getByTestId("verse-17")
+      .querySelector<HTMLElement>('[data-highlight-id="71"]');
+    if (!span) throw new Error("expected a covered span in verse 17");
+    fireEvent.mouseUp(span);
+
+    fireEvent.click(
+      within(screen.getByTestId("highlight-popover")).getByRole("button", {
+        name: /remove highlight/i,
+      }),
+    );
+
+    expect(onRemoveHighlight).toHaveBeenCalledTimes(1);
+    expect(onRemoveHighlight).toHaveBeenCalledWith(71);
   });
 });

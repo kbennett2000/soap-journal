@@ -139,3 +139,57 @@ describe("rangeToVerseSelection", () => {
     expect(rangeToVerseSelection(realRange(t, 0, t, 3))).toBeNull();
   });
 });
+
+describe("rangeToVerseSelection — multi-verse (5c)", () => {
+  function buildChapter(key: string, verseNumbers: number[]) {
+    const chapterEl = document.createElement("div");
+    chapterEl.setAttribute("data-chapter", key);
+    document.body.appendChild(chapterEl);
+    const verses = verseNumbers.map((n) => buildVerse(n, chapterEl));
+    return { chapterEl, verses };
+  }
+
+  it("resolves a selection spanning verses 2→4, with the END offset in verse 4's space", () => {
+    const { verses } = buildChapter("NET/John/3", [2, 3, 4]);
+    const v2 = verses[0]!;
+    const v4 = verses[2]!;
+    // Start: 4 chars into v2's "For God " (after "For "). End: 2 chars into v4's
+    // second segment ("so"). Each verse's plain space is "For God so loved" (16);
+    // the marker between segments is zero-width in BOTH verses.
+    const sel = rangeToVerseSelection(realRange(v2.seg1, 4, v4.seg2, 2));
+    expect(sel?.verseStart).toBe(2);
+    expect(sel?.charStart).toBe(4);
+    expect(sel?.verseEnd).toBe(4);
+    // 8 ("For God ") + 2 into seg2 = 10, computed in verse 4's element. A bug
+    // that measured the end in verse 2's space would NOT find v4.seg2 there and
+    // would fall back to v2's total length (16), so this asserts the right space.
+    expect(sel?.charEnd).toBe(10);
+  });
+
+  it("normalizes a backward multi-verse selection (end verse before start verse)", () => {
+    const { verses } = buildChapter("NET/John/3", [2, 3, 4]);
+    const v2 = verses[0]!;
+    const v4 = verses[2]!;
+    // A real Range collapses a backward selection, so build a RangeLike literal:
+    // anchored in v4 (start), focus back up into v2 (end), in reverse doc order.
+    const backward: RangeLike = {
+      startContainer: v4.seg2,
+      startOffset: 2,
+      endContainer: v2.seg1,
+      endOffset: 4,
+      getBoundingClientRect: () => ({ top: 0, left: 0, width: 0, height: 0 }),
+    };
+    const sel = rangeToVerseSelection(backward);
+    expect(sel?.verseStart).toBe(2);
+    expect(sel?.charStart).toBe(4);
+    expect(sel?.verseEnd).toBe(4);
+    expect(sel?.charEnd).toBe(10);
+  });
+
+  it("refuses a selection that crosses a chapter boundary", () => {
+    const a = buildChapter("NET/John/3", [2]);
+    const b = buildChapter("NET/John/4", [2]);
+    const sel = rangeToVerseSelection(realRange(a.verses[0]!.seg1, 0, b.verses[0]!.seg1, 3));
+    expect(sel).toBeNull();
+  });
+});

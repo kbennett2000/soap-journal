@@ -16,6 +16,7 @@
 
 const TEXT_SEGMENT_SELECTOR = "[data-text-segment]";
 const VERSE_SELECTOR = "[data-verse]";
+const CHAPTER_SELECTOR = "[data-chapter]";
 
 export interface VerseSelectionRect {
   top: number;
@@ -59,6 +60,16 @@ export function closestVerse(node: Node | null): HTMLElement | null {
       ? (node as Element)
       : node.parentElement;
   return (el?.closest(VERSE_SELECTOR) as HTMLElement | null) ?? null;
+}
+
+/** Nearest ancestor element carrying `data-chapter`, or null. */
+export function closestChapter(node: Node | null): HTMLElement | null {
+  if (!node) return null;
+  const el =
+    node.nodeType === Node.ELEMENT_NODE
+      ? (node as Element)
+      : node.parentElement;
+  return (el?.closest(CHAPTER_SELECTOR) as HTMLElement | null) ?? null;
 }
 
 function verseNumberOf(verseEl: HTMLElement): number | null {
@@ -106,6 +117,16 @@ export function rangeToVerseSelection(range: RangeLike): VerseSelection | null {
   const startVerseEl = closestVerse(range.startContainer);
   const endVerseEl = closestVerse(range.endContainer);
   if (!startVerseEl || !endVerseEl) return null;
+
+  // Multi-verse is allowed within ONE chapter (5c). A selection whose ends sit
+  // in different chapter containers (e.g. two rendered chapters) is refused —
+  // the offsets would index different coordinate spaces. When the markup has no
+  // [data-chapter] ancestor (bare unit-test DOM), this check is skipped.
+  const startChapterEl = closestChapter(range.startContainer);
+  const endChapterEl = closestChapter(range.endContainer);
+  if (startChapterEl && endChapterEl && startChapterEl !== endChapterEl) {
+    return null;
+  }
 
   const startVerse = verseNumberOf(startVerseEl);
   const endVerse = verseNumberOf(endVerseEl);
