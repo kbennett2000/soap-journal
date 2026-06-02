@@ -38,6 +38,13 @@ testpaths = ["soap_journal"]
 python_files = ["*_test.py"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+# The default run excludes `slow` tests (real full-PDF parses) so the unit
+# suite stays fast (<10s per CLAUDE.md). Run the full set with
+# `pytest -m "slow or not slow"`, or just the slow ones with `pytest -m slow`.
+addopts = ["-m", "not slow", "--strict-markers"]
+markers = [
+    "slow: real-PDF-parse / full-source integration tests; excluded from the default run",
+]
 filterwarnings = [
     "ignore::DeprecationWarning:pydantic.*",
     "ignore::DeprecationWarning:sqlalchemy.*",

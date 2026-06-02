@@ -20,13 +20,17 @@ Tests live next to the code as `*_test.py` siblings (see `CLAUDE.md`).
 Run them from this directory:
 
 ```bash
-pytest -v
+pytest                        # fast unit suite — the default loop (slow tests excluded)
+pytest -m "slow or not slow"  # everything, incl. the real-PDF integration tests
+pytest -m slow                # only the slow real-PDF integration tests
 ```
 
-The default suite includes two tests that exercise the bundled BSB source
-(parser + canonical-schema smoke). On a modern machine the full suite still
-runs in well under 10 seconds. If the BSB source is missing from
-`bible-sources/bsb/bsb.txt` those two tests skip automatically.
+Tests marked `slow` — the full-source parser integration tests that parse real
+multi-thousand-page Bible PDFs (and the NET Genesis-1 smoke test) — are
+**excluded from the default run** (via `addopts = -m "not slow"`) so it stays
+fast. They still run explicitly and in CI (see `.github/workflows/`). A `slow`
+test skips automatically when its source file isn't present (e.g. the
+gitignored copyrighted PDFs).
 
 ## CLI tools
 

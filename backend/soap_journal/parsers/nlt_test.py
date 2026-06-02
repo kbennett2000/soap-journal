@@ -326,6 +326,7 @@ def test_cli_returns_error_on_partial_source(tmp_path: Path) -> None:
 # ---- full-source integration tests ------------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not REAL_SOURCE.exists(), reason="NLT PDF not provided")
 class TestRealNltSource:
     """Integration tests against the user's NLT PDF."""

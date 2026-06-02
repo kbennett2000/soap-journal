@@ -28,7 +28,10 @@ Pick the half you want to work on:
 
 ## Running tests
 
-- Backend: `cd backend && pytest`
+- Backend (fast default loop): `cd backend && pytest` — excludes `slow` tests
+  (the real full-PDF parser integration tests) so it stays quick.
+- Backend (full set, incl. slow): `cd backend && pytest -m "slow or not slow"`.
+  This is what CI runs; run it before opening a PR that touches a parser.
 - Frontend: `cd frontend && npm run test`
 - Lint and typecheck the frontend: `npm run lint && npm run typecheck`
 - Lint the backend: `cd backend && ruff check soap_journal && ruff format --check soap_journal`

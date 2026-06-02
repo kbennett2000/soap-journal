@@ -280,6 +280,7 @@ def test_build_canonical_translation_requires_all_66_books() -> None:
 # ---- live smoke test (PDF-backed) ------------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not _NET_PDF.exists(), reason="bibles/net.pdf not present")
 def test_smoke_parse_genesis_1() -> None:
     chapter = parse_chapter(

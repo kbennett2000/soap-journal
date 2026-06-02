@@ -273,6 +273,7 @@ def test_end_to_end_pdf_parse(tmp_path: Path) -> None:
 # ---- full source tests (skipped in CI) ---------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not REAL_SOURCE.exists(), reason="NKJV PDF not provided")
 def test_parse_real_nkjv_source_has_expected_shape() -> None:
     from soap_journal.parsers.nkjv import _read_pdf
@@ -303,6 +304,7 @@ def test_parse_real_nkjv_source_has_expected_shape() -> None:
     assert revelation.chapters[-1].verses[-1].number == 21
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not REAL_SOURCE.exists(), reason="NKJV PDF not provided")
 def test_cli_writes_canonical_json_for_real_source(tmp_path: Path) -> None:
     out = tmp_path / "nkjv.json"

@@ -110,6 +110,7 @@ def test_cli_returns_error_on_partial_source(tmp_path: Path) -> None:
 # ---- full source smoke test ------------------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not REAL_SOURCE.exists(), reason="BSB source not bundled")
 def test_parse_real_bsb_source_has_expected_shape() -> None:
     translation, renames = parse_bsb_source(REAL_SOURCE.read_text(encoding="utf-8"))
@@ -144,6 +145,7 @@ def test_parse_real_bsb_source_has_expected_shape() -> None:
     assert renames == ["Psalm -> Psalms"]
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not REAL_SOURCE.exists(), reason="BSB source not bundled")
 def test_cli_writes_canonical_json_for_real_source(tmp_path: Path) -> None:
     out = tmp_path / "bsb.json"

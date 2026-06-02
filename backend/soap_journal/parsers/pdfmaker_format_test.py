@@ -337,6 +337,7 @@ _REAL_PARAMS = [
 ]
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not _REAL_PARAMS, reason="no PDFMaker PDFs found")
 class TestRealPdfMakerSources:
     """Integration tests against all available PDFMaker-format PDFs."""

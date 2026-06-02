@@ -391,6 +391,7 @@ def test_cli_returns_error_on_partial_source(tmp_path: Path) -> None:
 # ---- full-source integration tests ------------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not REAL_SOURCE.exists(), reason="KJV PDF not found")
 class TestRealKjvSource:
     """Integration tests against the bundled KJV PDF."""
