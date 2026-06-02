@@ -58,7 +58,8 @@ COPY backend/ ./
 # Built frontend bundle from stage 1.
 COPY --from=frontend-build /build/dist ./frontend-dist
 
-# Bundled BSB source — the entrypoint parses this on first boot.
+# Bundled Bible sources (BSB text + 12 public-domain PDFMaker translations) —
+# the entrypoint parses these on first boot.
 COPY bible-sources/ ./bible-sources/
 
 # Entrypoint

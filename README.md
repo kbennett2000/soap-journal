@@ -63,6 +63,7 @@ All configuration lives in `.env`:
 | `PORT`       | `8045`      | Host-side port published by Compose               |
 | `SECRET_KEY` | (generated) | Session signing key; auto-generated on first run  |
 | `DATA_DIR`   | `/data`     | (Advanced) data path inside the container         |
+| `BIND_HOST`  | `0.0.0.0`   | (Advanced) address the server binds to inside the container |
 
 Self-registration is controlled at runtime by the admin through the API
 (`PUT /api/v1/admin/settings`). On a fresh install it defaults to off; the
@@ -168,8 +169,16 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 alembic upgrade head
+
+# Load the bundled translations. The Docker path loads all 13 automatically;
+# here you parse + load each one yourself. BSB first (tab-separated text):
 python -m soap_journal.parsers.bsb ../bible-sources/bsb/bsb.txt --out /tmp/bsb.json
 python -m soap_journal.cli load-translation /tmp/bsb.json
+# ...then the 12 PDFMaker translations (or any subset you want):
+for code in kjv akjv asv cpdv dbt drb erv jps slt wbt web ylt; do
+    python -m soap_journal.parsers."$code" "../bible-sources/$code/$code.pdf" --out "/tmp/$code.json"
+    python -m soap_journal.cli load-translation "/tmp/$code.json"
+done
 
 # Frontend
 cd ../frontend

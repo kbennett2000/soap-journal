@@ -44,7 +44,7 @@ Each entry has:
 - Adjustable font size.
 - Light and dark themes.
 - Click any verse to start a new SOAP entry pre-filled with that reference.
-- **Side-by-side translation comparison**: UI element is always present but disabled and grayed until a second translation is loaded.
+- **Side-by-side translation comparison**: active by default, since multiple translations are bundled and loaded on first run. (The UI still falls back to a disabled affordance if an instance somehow has only one translation loaded.)
 - **Cross-reference from passage to entries**: when reading a chapter, the UI shows "you have N journal entries on this passage" with links to those entries.
 
 ### 3.3 Retrieval and Discovery
@@ -70,13 +70,15 @@ After login, the user lands on a **dashboard** showing:
 - Reset any user's password.
 - Promote / demote admins.
 - Toggle open registration.
-- View loaded translations and load new ones (point at a canonical JSON file on disk).
+- View loaded translations. (Loading a new translation is an operator/CLI task — see §4 — not an admin-panel action in v1.)
 
 ## 4. Bible Text and Parser Architecture
 
-### 4.1 v1 ships with BSB
+### 4.1 Bundled translations
 
-The Berean Standard Bible is bundled. No other translation is included in the v1 repo.
+v1 bundles **13 public-domain translations**, all parsed and loaded automatically on first run: BSB plus 12 PDFMaker-format translations (KJV, AKJV, ASV, CPDV, DBT, DRB, ERV, JPS, SLT, WBT, WEB, YLT).
+
+The parser architecture is designed so more translations can be added over time without shipping their text in the repo. Parsers for three copyrighted translations (ESV, NKJV, NLT) are included, but the repo ships no copyrighted text — a user supplies their own legally-obtained PDF via the gitignored `bibles/` directory and parses it locally.
 
 ### 4.2 Canonical format
 
@@ -115,11 +117,11 @@ The schema must accommodate (at minimum): section headings, footnotes, and a red
 Each translation has a **parser**: a standalone CLI module that ingests a source format (PDF, USFM, OSIS XML, plain text, etc.) and writes a canonical JSON file. Parsers are independent of the running server and the database. Example:
 
 ```
-python -m soap_journal.parsers.bsb path/to/source.json --out data/translations/bsb.json
+python -m soap_journal.parsers.bsb path/to/bsb.txt --out data/translations/bsb.json
 python -m soap_journal.parsers.nkjv path/to/nkjv.pdf --out data/translations/nkjv.json
 ```
 
-Loading a canonical JSON file into the DB is a separate step (CLI command or admin-panel action):
+Loading a canonical JSON file into the DB is a separate step (a CLI command):
 
 ```
 python -m soap_journal.cli load-translation data/translations/bsb.json
@@ -127,9 +129,9 @@ python -m soap_journal.cli load-translation data/translations/bsb.json
 
 The app **only ever reads canonical format** from the DB. Adding a translation = write a parser, run it, load the output.
 
-### 4.4 BSB parser in v1
+### 4.4 Bundled parsers
 
-BSB is available in clean structured formats already, so the BSB parser is essentially a format adapter. It ships in the repo. The v1 install runs it as part of first-run setup so users have a working Bible immediately.
+Two parser kinds cover the 13 bundled translations. BSB ingests a clean tab-separated text source, so its parser is essentially a format adapter. The 12 public-domain translations share a single **PDFMaker-format** PDF parser. The first-run setup runs all 13 (each independently and idempotently) so users have a full Bible — and the side-by-side comparison view — working immediately. The same parser architecture handles user-supplied copyrighted PDFs (ESV/NKJV/NLT) via their own parser modules.
 
 ## 5. Data Model (sketch)
 
@@ -151,7 +153,7 @@ BSB is available in clean structured formats already, so the BSB parser is essen
 
 A `.env` file at the repo root, generated from `.env.example` on first run. Keys:
 
-- `PORT` — port the server listens on. Default `8045`.
+- `PORT` — host-side port Compose maps to the container's internal `8080`; this is what you browse to, not the port the server itself binds. Default `8045`.
 - `DATA_DIR` — absolute or relative path to the data directory. Default `./data`.
 - `SECRET_KEY` — used for session signing. Generated on first run if absent.
 - `OPEN_REGISTRATION` — `true` / `false`. Admin can also toggle at runtime.
@@ -177,7 +179,7 @@ A `.env` file at the repo root, generated from `.env.example` on first run. Keys
 - Native mobile apps
 - Audio Bible, commentary, original-language tools
 - Outbound internet calls of any kind at runtime
-- Translations other than BSB shipping in the repo
+- Copyrighted translations shipping in the repo (parsers for ESV/NKJV/NLT are included, but users supply their own PDFs; only public-domain translations are bundled)
 
 ## 9. Future Considerations
 

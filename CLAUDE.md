@@ -38,7 +38,7 @@
   - `backend/soap_journal/api/` — route handlers, grouped by resource (`entries.py`, `bible.py`, `auth.py`, `users.py`, `tags.py`, `admin.py`).
   - `backend/soap_journal/core/` — business logic, independent of FastAPI (services, domain functions).
   - `backend/soap_journal/db/` — SQLAlchemy models, session, Alembic env.
-  - `backend/soap_journal/parsers/` — Bible parsers. Each parser is a CLI module: `python -m soap_journal.parsers.<name> <input> --out <path>`. Parsers output the canonical Bible JSON format and never touch the running DB; loading into the DB is a separate `load_translation` command.
+  - `backend/soap_journal/parsers/` — Bible parsers. Each parser is a CLI module: `python -m soap_journal.parsers.<name> <input> --out <path>`. Parsers output the canonical Bible JSON format and never touch the running DB; loading into the DB is a separate `load-translation` command.
   - `backend/soap_journal/schemas/` — Pydantic request/response models.
   - `backend/soap_journal/config.py` — env-driven settings (Pydantic Settings).
   - `backend/soap_journal/main.py` — FastAPI app factory + static mount.
@@ -80,7 +80,7 @@ Do not build any of these unless explicitly asked. They are deliberately deferre
 - Mobile apps (the responsive web UI is the mobile experience)
 - Real-time sync / multi-device conflict handling beyond standard last-write-wins
 - Any feature requiring an outbound internet call at runtime
-- Non-BSB translations shipping in the repo (parser architecture must support them; only BSB loads in v1)
+- Copyrighted translations shipping in the repo (the parser architecture supports them and ESV/NKJV/NLT parsers are included, but users supply their own PDFs; only the 13 public-domain translations are bundled)
 - Audio Bible, commentary integration, original-language tools
 - Admin analytics dashboards beyond user management
 

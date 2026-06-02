@@ -365,13 +365,22 @@ soap-journal  | [entrypoint] running as soap (uid 1000)
 soap-journal  | [entrypoint] data dir: /data
 soap-journal  | [entrypoint] running alembic migrations
 soap-journal  | INFO  [alembic.runtime.migration] Running upgrade ...
-soap-journal  | [entrypoint] no translations loaded — parsing bundled BSB
-soap-journal  | [entrypoint] loading BSB into the database
+soap-journal  | [entrypoint] (1/13) parsing BSB...
+soap-journal  | [entrypoint] (1/13) loading BSB into the database
+soap-journal  | [entrypoint] (1/13) BSB loaded
+soap-journal  | [entrypoint] (2/13) parsing KJV...
+soap-journal  | [entrypoint] (2/13) KJV loaded
+soap-journal  | ... (the remaining translations, through 13/13) ...
 soap-journal  | [entrypoint] starting: uvicorn ...
 soap-journal  | INFO:     Started server process [1]
 soap-journal  | INFO:     Application startup complete.
 soap-journal  | INFO:     Uvicorn running on http://0.0.0.0:8080
 ```
+
+All 13 bundled translations are parsed and loaded on first boot, which is
+why the first start takes several minutes — you'll see the `(N/13)` counter
+climb. On later restarts the already-loaded translations are skipped, so
+startup is fast.
 
 Those last three `INFO` lines mean soap-journal is up and listening.
 
