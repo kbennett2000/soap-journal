@@ -121,23 +121,29 @@ Beyond the 13 bundled translations, parsers are included for three popular
 copyrighted translations you can add if you have your own copy of the PDF:
 **NKJV**, **ESV**, and **NLT**.
 
-Drop the PDF into the gitignored `bibles/` directory, then parse and load
+Drop the PDF into the gitignored `bibles/` directory, then build and load
 it inside the running container. `./bibles` is bind-mounted to
 `/app/bibles`, so for example:
 
 ```bash
 docker compose exec soap-journal \
-  python -m soap_journal.parsers.esv /app/bibles/esv.pdf --out /tmp/esv.json
-docker compose exec soap-journal \
-  python -m soap_journal.cli validate-translation /tmp/esv.json
+  python -m soap_journal.cli build-translation --code ESV /app/bibles/esv.pdf --out /tmp/esv.json
 docker compose exec soap-journal \
   python -m soap_journal.cli load-translation /tmp/esv.json
 ```
 
-The `validate-translation` step is optional but recommended: it checks the
-parser's output against the canonical schema and reports the book/chapter/verse
-counts without touching the database, so you can confirm a translation is sound
-before loading it (or before transferring the JSON to another device).
+`build-translation` is the one-step path: it runs the matching parser and
+validates the result against the canonical schema in a single command,
+writing the output file only if validation passes (so a failed build never
+leaves a half-baked JSON behind). It reports the book/chapter/verse counts and
+touches no database — ideal for turning your own PDF into an import-ready file
+to load or to transfer to another device. `--out` defaults to
+`./<lowercase-code>.json` if omitted.
+
+If you'd rather run the steps separately, the parser
+(`python -m soap_journal.parsers.esv <pdf> --out <path>`) and
+`validate-translation <path.json>` are still available; `build-translation`
+simply composes the two.
 
 Step-by-step instructions for each of NKJV, ESV, and NLT — including the
 source format each expects and per-translation caveats — are in

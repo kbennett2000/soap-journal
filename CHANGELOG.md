@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `build-translation` CLI subcommand
+  (`python -m soap_journal.cli build-translation --code ESV <source> [--out <path>]`)
+  that parses a Bible source file and validates the result against the canonical
+  schema in one step, writing the output only if validation passes. Collapses the
+  former parse-then-validate flow into a single command for any of the 16
+  supported translation codes; touches no database.
 - `validate-translation` CLI subcommand
   (`python -m soap_journal.cli validate-translation <path.json>`) that checks a
   parser's canonical JSON against the schema and reports book/chapter/verse
