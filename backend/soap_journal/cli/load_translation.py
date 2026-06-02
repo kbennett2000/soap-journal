@@ -7,8 +7,8 @@ Behavior:
 - Validates the input against `CanonicalTranslation`. Validation failure
   exits non-zero with a helpful message and writes nothing.
 - If a translation with the same `code` already exists, deletes it and
-  every dependent row (footnotes -> verses -> headings -> chapters ->
-  books -> translation) in dependency order — SQLite does not enforce
+  every dependent row (cross_references -> footnotes -> verses -> headings
+  -> chapters -> books -> translation) in dependency order — SQLite does not enforce
   ON DELETE CASCADE without PRAGMA foreign_keys=ON, so the loader does
   it explicitly. The replacement and the original delete share one
   transaction; a load that fails halfway rolls everything back.
@@ -28,11 +28,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from soap_journal.config import get_settings
 from soap_journal.db.models.book import Book
 from soap_journal.db.models.chapter import Chapter
+from soap_journal.db.models.cross_reference import CrossReference
 from soap_journal.db.models.footnote import Footnote
 from soap_journal.db.models.heading import Heading
 from soap_journal.db.models.translation import Translation
 from soap_journal.db.models.verse import Verse
-from soap_journal.parsers.schema import CanonicalTranslation
+from soap_journal.parsers.schema import CanonicalCrossRef, CanonicalTranslation
 
 
 async def _delete_existing_translation(db: AsyncSession, code: str) -> bool:
@@ -68,6 +69,16 @@ async def _delete_existing_translation(db: AsyncSession, code: str) -> bool:
                 ).all()
             ]
             if verse_ids:
+                # Cross-references reference both footnotes and verses of this
+                # translation; delete them first so the footnote/verse deletes
+                # below don't orphan rows or trip FKs. Every cross-ref's source
+                # verse belongs to this translation, so scoping by from_verse_id
+                # covers them all.
+                await db.execute(
+                    delete(CrossReference)
+                    .where(CrossReference.from_verse_id.in_(verse_ids))
+                    .execution_options(synchronize_session=False)
+                )
                 await db.execute(
                     delete(Footnote)
                     .where(Footnote.verse_id.in_(verse_ids))
@@ -111,6 +122,15 @@ async def _insert_translation(db: AsyncSession, payload: CanonicalTranslation) -
     db.add(translation)
     await db.flush()
 
+    # Cross-ref targets are addressed by canonical book order (1..66) and may
+    # point at a book inserted later than the note's own book (e.g. a Genesis
+    # note referencing John), so resolve targets only after every book of this
+    # translation exists. book_id_by_order maps order_index -> this
+    # translation's Book.id; pending_cross_refs holds the inserted Footnote rows
+    # (for their flushed id/verse_id) alongside their canonical cross-refs.
+    book_id_by_order: dict[int, int] = {}
+    pending_cross_refs: list[tuple[Footnote, list[CanonicalCrossRef]]] = []
+
     for canonical_book in payload.books:
         book = Book(
             translation_id=translation.id,
@@ -120,6 +140,7 @@ async def _insert_translation(db: AsyncSession, payload: CanonicalTranslation) -
         )
         db.add(book)
         await db.flush()
+        book_id_by_order[canonical_book.order_index] = book.id
 
         for canonical_chapter in canonical_book.chapters:
             chapter = Chapter(book_id=book.id, number=canonical_chapter.number)
@@ -149,7 +170,37 @@ async def _insert_translation(db: AsyncSession, payload: CanonicalTranslation) -
 
             for canonical_footnote in canonical_chapter.footnotes:
                 verse_row = verse_rows[canonical_footnote.verse_number]
-                db.add(Footnote(verse_id=verse_row.id, text=canonical_footnote.text))
+                footnote = Footnote(
+                    verse_id=verse_row.id,
+                    text=canonical_footnote.text,
+                    note_type=canonical_footnote.note_type,
+                    char_offset=canonical_footnote.char_offset,
+                    marker=canonical_footnote.marker,
+                    # ordinal is NOT NULL in the DB; a plain (unordered) footnote
+                    # falls back to 0.
+                    ordinal=(
+                        canonical_footnote.ordinal if canonical_footnote.ordinal is not None else 0
+                    ),
+                )
+                db.add(footnote)
+                if canonical_footnote.cross_refs:
+                    pending_cross_refs.append((footnote, canonical_footnote.cross_refs))
+
+    # Flush so footnote ids are assigned before cross-references reference them.
+    await db.flush()
+
+    for footnote, cross_refs in pending_cross_refs:
+        for cross_ref in cross_refs:
+            db.add(
+                CrossReference(
+                    footnote_id=footnote.id,
+                    from_verse_id=footnote.verse_id,
+                    to_book_id=book_id_by_order[cross_ref.to_book_order_index],
+                    to_chapter=cross_ref.to_chapter,
+                    to_verse_start=cross_ref.to_verse_start,
+                    to_verse_end=cross_ref.to_verse_end,
+                )
+            )
 
     await db.flush()
 

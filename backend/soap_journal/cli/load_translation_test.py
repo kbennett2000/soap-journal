@@ -17,6 +17,7 @@ from soap_journal.cli.load_translation import (
 from soap_journal.core.bible.books import ALL_BOOKS
 from soap_journal.db.models.book import Book
 from soap_journal.db.models.chapter import Chapter
+from soap_journal.db.models.cross_reference import CrossReference
 from soap_journal.db.models.footnote import Footnote
 from soap_journal.db.models.heading import Heading
 from soap_journal.db.models.translation import Translation
@@ -24,6 +25,7 @@ from soap_journal.db.models.verse import Verse
 from soap_journal.parsers.schema import (
     CanonicalBook,
     CanonicalChapter,
+    CanonicalCrossRef,
     CanonicalFootnote,
     CanonicalHeading,
     CanonicalTranslation,
@@ -41,7 +43,7 @@ async def clean_translations(db_session: AsyncSession) -> AsyncSession:
     Deletes here run inside the per-test transaction and roll back at
     teardown, so this never affects other tests' view of BSB.
     """
-    for model in (Footnote, Heading, Verse, Chapter, Book, Translation):
+    for model in (CrossReference, Footnote, Heading, Verse, Chapter, Book, Translation):
         await db_session.execute(delete(model))
     await db_session.flush()
     return db_session
@@ -74,6 +76,7 @@ def _full_translation(
     name: str = "Test Translation",
     *,
     enrich_genesis: bool = False,
+    enrich_notes: bool = False,
 ) -> CanonicalTranslation:
     books = [_book(i) for i in range(1, 67)]
     if enrich_genesis:
@@ -89,6 +92,40 @@ def _full_translation(
                     verses=[CanonicalVerse(number=v, text=f"Gen 1:{v}") for v in range(1, 6)],
                     headings=[CanonicalHeading(before_verse=1, text="The Creation")],
                     footnotes=[CanonicalFootnote(verse_number=2, text="Heb. tohu wabohu")],
+                )
+            ],
+        )
+    if enrich_notes:
+        # Genesis 1 with a plain footnote (verse 2) and a rich, typed,
+        # char-anchored note (verse 3) carrying a cross-ref to John 1:1 —
+        # John lives in the same translation but is inserted much later, so
+        # this exercises cross-book target resolution.
+        books[0] = CanonicalBook(
+            name=ALL_BOOKS[0].name,
+            abbreviation=ALL_BOOKS[0].abbreviation,
+            order_index=ALL_BOOKS[0].order_index,
+            chapters=[
+                CanonicalChapter(
+                    number=1,
+                    verses=[CanonicalVerse(number=v, text=f"Gen 1:{v}") for v in range(1, 6)],
+                    footnotes=[
+                        CanonicalFootnote(verse_number=2, text="a plain footnote"),
+                        CanonicalFootnote(
+                            verse_number=3,
+                            text="tn The Hebrew term...",
+                            note_type="tn",
+                            char_offset=4,
+                            marker=1,
+                            ordinal=0,
+                            cross_refs=[
+                                CanonicalCrossRef(
+                                    to_book_order_index=43,  # John
+                                    to_chapter=1,
+                                    to_verse_start=1,
+                                ),
+                            ],
+                        ),
+                    ],
                 )
             ],
         )
@@ -201,6 +238,135 @@ async def test_loading_second_translation_isolates_from_first(
         )
     ).scalar_one()
     assert bbb_books == 66
+
+
+# ---- rich notes + cross-references -----------------------------------------
+
+
+async def _genesis_footnote(db: AsyncSession, translation_id: int, verse_number: int) -> Footnote:
+    return (
+        await db.execute(
+            select(Footnote)
+            .join(Verse, Verse.id == Footnote.verse_id)
+            .join(Chapter, Chapter.id == Verse.chapter_id)
+            .join(Book, Book.id == Chapter.book_id)
+            .where(
+                Book.translation_id == translation_id,
+                Book.name == "Genesis",
+                Chapter.number == 1,
+                Verse.number == verse_number,
+            )
+        )
+    ).scalar_one()
+
+
+async def test_rich_note_columns_persist(clean_translations: AsyncSession) -> None:
+    db_session = clean_translations
+    payload = _full_translation(enrich_notes=True)
+    await load_canonical_translation(db_session, payload)
+
+    tid = (
+        await db_session.execute(select(Translation.id).where(Translation.code == "TST"))
+    ).scalar_one()
+    fn = await _genesis_footnote(db_session, tid, verse_number=3)
+    assert fn.text == "tn The Hebrew term..."
+    assert fn.note_type == "tn"
+    assert fn.char_offset == 4
+    assert fn.marker == 1
+    assert fn.ordinal == 0
+
+
+async def test_plain_footnote_loads_with_null_note_fields(
+    clean_translations: AsyncSession,
+) -> None:
+    db_session = clean_translations
+    payload = _full_translation(enrich_notes=True)
+    await load_canonical_translation(db_session, payload)
+
+    tid = (
+        await db_session.execute(select(Translation.id).where(Translation.code == "TST"))
+    ).scalar_one()
+    plain = await _genesis_footnote(db_session, tid, verse_number=2)
+    assert plain.text == "a plain footnote"
+    assert plain.note_type is None
+    assert plain.char_offset is None
+    assert plain.marker is None
+    # ordinal is NOT NULL in the DB and falls back to 0 for unordered notes.
+    assert plain.ordinal == 0
+
+
+async def test_cross_reference_persists_and_links_source(
+    clean_translations: AsyncSession,
+) -> None:
+    db_session = clean_translations
+    payload = _full_translation(enrich_notes=True)
+    await load_canonical_translation(db_session, payload)
+
+    tid = (
+        await db_session.execute(select(Translation.id).where(Translation.code == "TST"))
+    ).scalar_one()
+    rich = await _genesis_footnote(db_session, tid, verse_number=3)
+
+    xrefs = (await db_session.execute(select(CrossReference))).scalars().all()
+    assert len(xrefs) == 1
+    xr = xrefs[0]
+
+    john_id = (
+        await db_session.execute(
+            select(Book.id).where(Book.translation_id == tid, Book.name == "John")
+        )
+    ).scalar_one()
+    assert xr.footnote_id == rich.id
+    assert xr.from_verse_id == rich.verse_id  # denormalized source verse
+    assert xr.to_book_id == john_id
+    assert (xr.to_chapter, xr.to_verse_start, xr.to_verse_end) == (1, 1, None)
+
+
+async def test_cross_reference_resolves_book_within_its_own_translation(
+    clean_translations: AsyncSession,
+) -> None:
+    db_session = clean_translations
+    # Two translations, each with a Genesis->John cross-ref. Each cross-ref's
+    # target John must be the John of the SAME translation as its source verse.
+    await load_canonical_translation(db_session, _full_translation(code="AAA", enrich_notes=True))
+    await load_canonical_translation(db_session, _full_translation(code="BBB", enrich_notes=True))
+
+    xrefs = (await db_session.execute(select(CrossReference))).scalars().all()
+    assert len(xrefs) == 2
+    for xr in xrefs:
+        source_tid = (
+            await db_session.execute(
+                select(Book.translation_id)
+                .join(Chapter, Chapter.book_id == Book.id)
+                .join(Verse, Verse.chapter_id == Chapter.id)
+                .where(Verse.id == xr.from_verse_id)
+            )
+        ).scalar_one()
+        target_book = (
+            await db_session.execute(select(Book).where(Book.id == xr.to_book_id))
+        ).scalar_one()
+        assert target_book.translation_id == source_tid
+        assert target_book.name == "John"
+
+
+async def test_reload_replaces_cross_references_cleanly(
+    clean_translations: AsyncSession,
+) -> None:
+    db_session = clean_translations
+    await load_canonical_translation(db_session, _full_translation(code="TST", enrich_notes=True))
+    await load_canonical_translation(db_session, _full_translation(code="TST", enrich_notes=True))
+
+    # The delete walk removes cross_references ahead of footnotes/verses, so a
+    # replace-load leaves exactly one cross-ref (no orphans, no FK error).
+    xref_count = (
+        await db_session.execute(select(func.count()).select_from(CrossReference))
+    ).scalar_one()
+    assert xref_count == 1
+
+    footnote_count = (
+        await db_session.execute(select(func.count()).select_from(Footnote))
+    ).scalar_one()
+    assert footnote_count == 2  # one plain + one rich
 
 
 # ---- CLI surface -----------------------------------------------------------

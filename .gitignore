@@ -31,6 +31,10 @@ bibles/*
 # Runtime data (SQLite DB, Bible JSON, uploads — never commit)
 data/
 
+# Claude Code runtime locks (tracked config under .claude/ stays tracked)
+.claude/*.lock
+.claude/scheduled_tasks.lock
+
 # IDE / OS
 .vscode/
 .idea/
