@@ -9,6 +9,7 @@ from soap_journal.core.bible.books import ALL_BOOKS
 from soap_journal.parsers.schema import (
     CanonicalBook,
     CanonicalChapter,
+    CanonicalCrossRef,
     CanonicalFootnote,
     CanonicalHeading,
     CanonicalTranslation,
@@ -220,3 +221,132 @@ def test_unknown_field_rejected() -> None:
 def test_empty_text_rejected() -> None:
     with pytest.raises(ValidationError):
         CanonicalVerse(number=1, text="")
+
+
+# ---- notes enrichment: backward compatibility ------------------------------
+
+
+def test_plain_footnote_leaves_new_fields_unset() -> None:
+    # An untyped footnote (every bundled translation) must default the new
+    # fields and validate unchanged.
+    fn = CanonicalFootnote(verse_number=1, text="see Ps 23")
+    assert fn.note_type is None
+    assert fn.char_offset is None
+    assert fn.marker is None
+    assert fn.ordinal is None
+    assert fn.cross_refs == []
+
+
+def test_existing_canonical_json_validates_unchanged() -> None:
+    # JSON with no note metadata (the shape every bundled parser emits) still
+    # round-trips through the enriched schema.
+    raw = (
+        '{"number": 1, "verses": [{"number": 1, "text": "In the beginning"}],'
+        ' "footnotes": [{"verse_number": 1, "text": "a footnote"}]}'
+    )
+    chapter = CanonicalChapter.model_validate_json(raw)
+    assert chapter.footnotes[0].note_type is None
+    assert chapter.footnotes[0].cross_refs == []
+
+
+# ---- notes enrichment: typed, anchored, cross-referenced -------------------
+
+
+def test_typed_anchored_note_with_cross_refs_round_trips() -> None:
+    chapter = CanonicalChapter(
+        number=1,
+        verses=[CanonicalVerse(number=1, text="In the beginning God created")],
+        footnotes=[
+            CanonicalFootnote(
+                verse_number=1,
+                text="tn The Hebrew term...",
+                note_type="tn",
+                char_offset=13,
+                marker=1,
+                ordinal=0,
+                cross_refs=[
+                    CanonicalCrossRef(
+                        to_book_order_index=43,
+                        to_chapter=1,
+                        to_verse_start=1,
+                    ),
+                    CanonicalCrossRef(
+                        to_book_order_index=19,
+                        to_chapter=33,
+                        to_verse_start=6,
+                        to_verse_end=9,
+                    ),
+                ],
+            )
+        ],
+    )
+    dumped = chapter.model_dump_json()
+    reloaded = CanonicalChapter.model_validate_json(dumped)
+    fn = reloaded.footnotes[0]
+    assert fn.note_type == "tn"
+    assert fn.char_offset == 13
+    assert fn.ordinal == 0
+    assert fn.cross_refs[1].to_verse_end == 9
+
+
+def test_all_note_types_accepted() -> None:
+    for note_type in ("tn", "sn", "tc", "map"):
+        fn = CanonicalFootnote(verse_number=1, text="x", note_type=note_type)
+        assert fn.note_type == note_type
+
+
+def test_unknown_note_type_rejected() -> None:
+    with pytest.raises(ValidationError):
+        CanonicalFootnote(verse_number=1, text="x", note_type="xx")
+
+
+# ---- notes enrichment: validators ------------------------------------------
+
+
+def test_char_offset_at_verse_length_allowed() -> None:
+    # An offset equal to the length (anchor after the last char) is valid.
+    chapter = CanonicalChapter(
+        number=1,
+        verses=[CanonicalVerse(number=1, text="abc")],
+        footnotes=[CanonicalFootnote(verse_number=1, text="x", char_offset=3)],
+    )
+    assert chapter.footnotes[0].char_offset == 3
+
+
+def test_char_offset_beyond_verse_length_rejected() -> None:
+    with pytest.raises(ValidationError, match="beyond verse length"):
+        CanonicalChapter(
+            number=1,
+            verses=[CanonicalVerse(number=1, text="abc")],
+            footnotes=[CanonicalFootnote(verse_number=1, text="x", char_offset=4)],
+        )
+
+
+def test_negative_char_offset_rejected() -> None:
+    with pytest.raises(ValidationError):
+        CanonicalFootnote(verse_number=1, text="x", char_offset=-1)
+
+
+def test_cross_ref_book_order_index_out_of_range_rejected() -> None:
+    with pytest.raises(ValidationError):
+        CanonicalCrossRef(to_book_order_index=67, to_chapter=1, to_verse_start=1)
+
+
+def test_cross_ref_book_order_index_zero_rejected() -> None:
+    with pytest.raises(ValidationError):
+        CanonicalCrossRef(to_book_order_index=0, to_chapter=1, to_verse_start=1)
+
+
+def test_cross_ref_end_before_start_rejected() -> None:
+    with pytest.raises(ValidationError, match="before to_verse_start"):
+        CanonicalCrossRef(
+            to_book_order_index=1,
+            to_chapter=1,
+            to_verse_start=10,
+            to_verse_end=5,
+        )
+
+
+def test_cross_ref_end_equal_start_allowed() -> None:
+    ref = CanonicalCrossRef(to_book_order_index=1, to_chapter=1, to_verse_start=5, to_verse_end=5)
+    assert ref.to_verse_end == 5
