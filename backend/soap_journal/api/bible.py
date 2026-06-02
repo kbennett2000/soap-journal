@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from soap_journal.api.deps import get_current_user
 from soap_journal.core.bible.books import get_book_by_name
-from soap_journal.core.bible_search import run_search
+from soap_journal.core.bible_search import ALL_TRANSLATIONS, run_search, run_search_all
 from soap_journal.core.errors import ErrorCode, raise_http
 from soap_journal.core.references import (
     ParsedReference,
@@ -516,7 +516,15 @@ async def search_scripture(
     note hits come back as separate ranked lists with highlighted snippets.
     Note hits exist only where the translation has notes (i.e. NET); for a
     translation without notes the note list is simply empty.
+
+    `translation=ALL` searches every loaded translation and groups verse hits by
+    canonical (book, chapter, verse) — one row per verse listing all matched
+    translation codes with the best-ranked snippet. Notes stay a flat list
+    (NET-only), not grouped.
     """
+    if translation is not None and translation.upper() == ALL_TRANSLATIONS:
+        return await run_search_all(db, q=q, scope=scope, limit=limit, offset=offset)
+
     translation_row = (
         await _get_translation_by_code(db, translation)
         if translation is not None

@@ -121,13 +121,20 @@ SearchScope = Literal["verses", "notes", "both"]
 
 
 class VerseSearchHit(BaseModel):
-    """A verse-text search hit. `book` is the abbreviation (display + navigable)."""
+    """A verse-text search hit. `book` is the abbreviation (display + navigable).
+
+    Single-translation search: `translation_code` is the searched translation and
+    `translation_codes` is None. In `translation=ALL` mode each canonical verse is
+    one grouped row — `translation_codes` lists every translation that matched and
+    `translation_code` is the best-ranked one (the source of `snippet`).
+    """
 
     translation_code: str
     book: str
     chapter: int
     verse: int
     snippet: str  # contains <mark>...</mark> around matched terms
+    translation_codes: list[str] | None = None
 
 
 class NoteSearchHit(BaseModel):
@@ -144,7 +151,7 @@ class NoteSearchHit(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     scope: SearchScope
-    translation_code: str  # the translation actually searched (resolved default)
+    translation_code: str  # searched translation code, or "ALL" for cross-translation search
     verse_hits: list[VerseSearchHit]
     note_hits: list[NoteSearchHit]
     total_verse_hits: int
