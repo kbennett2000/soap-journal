@@ -198,6 +198,15 @@ export interface AnnotationCreate {
   note?: string | null;
 }
 
+/**
+ * Partial update for an annotation (mirrors the backend `AnnotationUpdate`).
+ * Only fields present are applied; `note: null` clears the note.
+ */
+export interface AnnotationUpdate {
+  color?: HighlightColor;
+  note?: string | null;
+}
+
 export interface AnnotationEnvelope {
   annotation: Annotation;
 }

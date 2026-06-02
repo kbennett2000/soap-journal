@@ -9,8 +9,13 @@ import {
   createAnnotation,
   deleteAnnotation,
   listAnnotations,
+  updateAnnotation,
 } from "@/lib/annotations";
-import type { AnnotationCreate, AnnotationListResponse } from "@/types/api";
+import type {
+  AnnotationCreate,
+  AnnotationListResponse,
+  AnnotationUpdate,
+} from "@/types/api";
 
 /**
  * TanStack Query hooks for the reader's per-chapter highlights.
@@ -51,6 +56,22 @@ export function useCreateAnnotation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: AnnotationCreate) => createAnnotation(body),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["annotations", "list"] });
+    },
+  });
+}
+
+export function useUpdateAnnotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      annotationId,
+      body,
+    }: {
+      annotationId: number;
+      body: AnnotationUpdate;
+    }) => updateAnnotation(annotationId, body),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["annotations", "list"] });
     },

@@ -20,7 +20,12 @@ import {
   makeTagList,
 } from "@/test/utils/entries";
 import { makeUser } from "@/test/utils/factories";
-import type { Annotation, AuthEnvelope, SearchScope } from "@/types/api";
+import type {
+  Annotation,
+  AnnotationUpdate,
+  AuthEnvelope,
+  SearchScope,
+} from "@/types/api";
 
 /**
  * Default happy-path handlers. Each test overrides the specific
@@ -184,6 +189,18 @@ export const createAnnotationHandler = http.post(
   },
 );
 
+export const updateAnnotationHandler = http.patch(
+  "/api/v1/annotations/:annotationId",
+  async ({ params, request }) => {
+    const body = (await request.json()) as AnnotationUpdate;
+    const id = Number(params.annotationId);
+    return HttpResponse.json(
+      { annotation: makeAnnotation({ ...body, id }) },
+      { status: 200 },
+    );
+  },
+);
+
 export const deleteAnnotationHandler = http.delete(
   "/api/v1/annotations/:annotationId",
   () => new HttpResponse(null, { status: 204 }),
@@ -278,6 +295,7 @@ export const defaultHandlers = [
   tagsAutocompleteHandler,
   annotationsListHandler,
   createAnnotationHandler,
+  updateAnnotationHandler,
   deleteAnnotationHandler,
   adminUsersListHandler,
   adminCreateUserHandler,

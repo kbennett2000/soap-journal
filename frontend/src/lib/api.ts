@@ -3,7 +3,7 @@ import type { ApiErrorDetail } from "@/types/api";
 
 const API_PREFIX = "/api/v1";
 
-type Method = "GET" | "POST" | "PUT" | "DELETE";
+type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 interface ApiOptions<TBody> {
   body?: TBody;

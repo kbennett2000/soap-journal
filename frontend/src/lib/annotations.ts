@@ -4,6 +4,7 @@ import type {
   AnnotationCreate,
   AnnotationEnvelope,
   AnnotationListResponse,
+  AnnotationUpdate,
 } from "@/types/api";
 
 /**
@@ -37,6 +38,18 @@ export async function createAnnotation(body: AnnotationCreate): Promise<Annotati
   const res = await apiRequest<AnnotationEnvelope, AnnotationCreate>(
     "POST",
     "/annotations",
+    { body },
+  );
+  return res.annotation;
+}
+
+export async function updateAnnotation(
+  annotationId: number,
+  body: AnnotationUpdate,
+): Promise<Annotation> {
+  const res = await apiRequest<AnnotationEnvelope, AnnotationUpdate>(
+    "PATCH",
+    `/annotations/${annotationId}`,
     { body },
   );
   return res.annotation;
