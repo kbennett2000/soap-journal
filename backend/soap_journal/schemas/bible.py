@@ -35,11 +35,32 @@ class TranslationDetailResponse(BaseModel):
     books: list[BookSummary]
 
 
+# Typed translator-note categories (tn/sn/tc/map); None for a plain footnote.
+# Declared locally to keep the response schema decoupled from the parser package.
+NoteType = Literal["tn", "sn", "tc", "map"]
+
+
+class CrossRefResponse(BaseModel):
+    """A cross-reference from a note to a verse (or verse range) in the same translation."""
+
+    to_book: str  # target book abbreviation (display label + navigable alias)
+    to_chapter: int
+    to_verse_start: int
+    to_verse_end: int | None = None
+
+
 class FootnoteResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     text: str
+    # Rich-note fields. Plain footnotes (the 13 bundled translations) default to
+    # null/0/[] so clients branch on `note_type`.
+    note_type: NoteType | None = None
+    char_offset: int | None = None
+    marker: int | None = None
+    ordinal: int = 0
+    cross_refs: list[CrossRefResponse] = []
 
 
 class VerseResponse(BaseModel):

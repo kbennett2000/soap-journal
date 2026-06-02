@@ -38,6 +38,7 @@ from soap_journal.core.references import (
 )
 from soap_journal.db.models.book import Book
 from soap_journal.db.models.chapter import Chapter
+from soap_journal.db.models.cross_reference import CrossReference
 from soap_journal.db.models.entry import Entry
 from soap_journal.db.models.entry_scripture_verse import EntryScriptureVerse
 from soap_journal.db.models.entry_tag import EntryTag
@@ -52,6 +53,7 @@ from soap_journal.schemas.bible import (
     BookSummary,
     ChapterPointer,
     ChapterResponse,
+    CrossRefResponse,
     FootnoteResponse,
     HeadingResponse,
     PassageEntriesResponse,
@@ -146,7 +148,15 @@ async def _get_chapter(db: AsyncSession, book_id: int, chapter_number: int) -> C
 
 
 async def _verses_with_footnotes(db: AsyncSession, chapter_id: int) -> list[VerseResponse]:
-    """Load all verses for a chapter + group their footnotes in 2 queries."""
+    """Load a chapter's verses + their footnotes (with nested cross-refs).
+
+    Fixed query budget, no N+1: one SELECT for verses, one for footnotes (by
+    verse id), and — only when the chapter has footnotes — one for the
+    cross-references (by footnote id, joined to `books` for the target
+    abbreviation). Cross-refs are grouped under footnotes, footnotes under
+    verses, in Python. Plain translations (no typed notes, no cross-refs) come
+    back with the rich fields defaulted (null/0/[]).
+    """
     verse_rows = (
         (
             await db.execute(
@@ -163,16 +173,50 @@ async def _verses_with_footnotes(db: AsyncSession, chapter_id: int) -> list[Vers
     footnote_rows = (
         (
             await db.execute(
-                select(Footnote).where(Footnote.verse_id.in_(verse_ids)).order_by(Footnote.id.asc())
+                select(Footnote)
+                .where(Footnote.verse_id.in_(verse_ids))
+                .order_by(Footnote.verse_id.asc(), Footnote.ordinal.asc(), Footnote.id.asc())
             )
         )
         .scalars()
         .all()
     )
+
+    # One cross-ref query for the whole chapter, joined to books for the target
+    # abbreviation; skipped entirely when the chapter has no footnotes.
+    cross_refs_by_footnote: dict[int, list[CrossRefResponse]] = {}
+    footnote_ids = [fn.id for fn in footnote_rows]
+    if footnote_ids:
+        xref_rows = (
+            await db.execute(
+                select(CrossReference, Book.abbreviation)
+                .join(Book, Book.id == CrossReference.to_book_id)
+                .where(CrossReference.footnote_id.in_(footnote_ids))
+                .order_by(CrossReference.id.asc())
+            )
+        ).all()
+        for xref, to_book_abbreviation in xref_rows:
+            cross_refs_by_footnote.setdefault(xref.footnote_id, []).append(
+                CrossRefResponse(
+                    to_book=to_book_abbreviation,
+                    to_chapter=xref.to_chapter,
+                    to_verse_start=xref.to_verse_start,
+                    to_verse_end=xref.to_verse_end,
+                )
+            )
+
     footnotes_by_verse: dict[int, list[FootnoteResponse]] = {}
     for fn in footnote_rows:
         footnotes_by_verse.setdefault(fn.verse_id, []).append(
-            FootnoteResponse(id=fn.id, text=fn.text)
+            FootnoteResponse(
+                id=fn.id,
+                text=fn.text,
+                note_type=fn.note_type,
+                char_offset=fn.char_offset,
+                marker=fn.marker,
+                ordinal=fn.ordinal,
+                cross_refs=cross_refs_by_footnote.get(fn.id, []),
+            )
         )
 
     return [

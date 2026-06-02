@@ -42,6 +42,10 @@ def _encode_path(part: str) -> str:
     return urllib.parse.quote(part, safe="")
 
 
+def _chapter_url(code: str, book: str, chapter: int) -> str:
+    return f"/api/v1/bible/translations/{code}/books/{_encode_path(book)}/chapters/{chapter}"
+
+
 async def _drop_all_bible_data(db_session) -> None:
     """Empty every Bible-related table for the duration of the current test
     transaction. The session-scoped bsb_loaded fixture commits BSB to the
@@ -520,3 +524,133 @@ async def test_resolve_with_no_translations_loaded_returns_404(
     response = await client.get("/api/v1/bible/resolve", params={"ref": "John 3:16"})
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "TRANSLATION_NOT_FOUND"
+
+
+# ---- notes + cross-references (ADR-0002) ------------------------------------
+#
+# Load a small notes-bearing translation into the per-test transaction (the
+# `client` shares this session, so the endpoints see it; it rolls back at
+# teardown). The mini fixture's Genesis 1 carries a plain footnote on v2 and a
+# typed, char-anchored note on v3 whose cross-ref points at John 1:1 in the
+# same translation. The full parse is NOT exercised — this stays fast and lives
+# in the default suite.
+
+
+async def _load_translation(
+    db_session, *, enrich_notes: bool = False, enrich_genesis: bool = False
+) -> None:
+    from soap_journal.cli.load_translation import load_canonical_translation
+    from soap_journal.cli.load_translation_test import _full_translation
+
+    payload = _full_translation(
+        code="NETT", name="NET-ish Test", enrich_notes=enrich_notes, enrich_genesis=enrich_genesis
+    )
+    await load_canonical_translation(db_session, payload)
+    await db_session.flush()
+
+
+async def test_chapter_includes_typed_notes_and_resolved_cross_refs(
+    client: AsyncClient, bsb_loaded: None, db_session
+) -> None:
+    await _register(client)
+    await _load_translation(db_session, enrich_notes=True)
+
+    body = (await client.get(_chapter_url("NETT", "Genesis", 1))).json()
+
+    verse_3 = next(v for v in body["verses"] if v["number"] == 3)
+    assert len(verse_3["footnotes"]) == 1
+    note = verse_3["footnotes"][0]
+    assert note["note_type"] == "tn"
+    assert note["char_offset"] == 4
+    assert note["marker"] == 1
+    assert note["ordinal"] == 0
+    assert note["text"].startswith("tn ")
+    # Cross-ref resolved to the target book's abbreviation within this translation.
+    assert note["cross_refs"] == [
+        {"to_book": "John", "to_chapter": 1, "to_verse_start": 1, "to_verse_end": None}
+    ]
+
+
+async def test_chapter_plain_footnote_has_null_note_fields(
+    client: AsyncClient, bsb_loaded: None, db_session
+) -> None:
+    # Backward-compat for the 13 plain translations: a plain footnote (no type)
+    # serializes with null note fields, ordinal 0, and no cross-refs.
+    await _register(client)
+    await _load_translation(db_session, enrich_genesis=True)  # plain footnote on Gen 1:2
+
+    body = (await client.get(_chapter_url("NETT", "Genesis", 1))).json()
+
+    verse_2 = next(v for v in body["verses"] if v["number"] == 2)
+    assert len(verse_2["footnotes"]) == 1
+    note = verse_2["footnotes"][0]
+    assert note["note_type"] is None
+    assert note["char_offset"] is None
+    assert note["marker"] is None
+    assert note["ordinal"] == 0
+    assert note["cross_refs"] == []
+
+
+async def test_bsb_chapter_footnote_shape_unchanged(client: AsyncClient, bsb_loaded: None) -> None:
+    # The bundled BSB has no footnotes; the enriched payload must still serve it
+    # unchanged (empty footnote lists), proving the additive fields are safe.
+    await _register(client)
+    body = (
+        await client.get(f"/api/v1/bible/translations/BSB/books/{_encode_path('John')}/chapters/3")
+    ).json()
+    assert all(v["footnotes"] == [] for v in body["verses"])
+
+
+async def test_resolve_includes_typed_notes_and_cross_refs(
+    client: AsyncClient, bsb_loaded: None, db_session
+) -> None:
+    # The resolve endpoint shares _verses_with_footnotes, so it gets the same
+    # enriched verses.
+    await _register(client)
+    await _load_translation(db_session, enrich_notes=True)
+
+    body = (
+        await client.get(
+            "/api/v1/bible/resolve", params={"ref": "Genesis 1:3", "translation": "NETT"}
+        )
+    ).json()
+    assert len(body["verses"]) == 1
+    note = body["verses"][0]["footnotes"][0]
+    assert note["note_type"] == "tn"
+    assert note["cross_refs"][0]["to_book"] == "John"
+
+
+async def test_chapter_notes_query_count_is_fixed_no_n_plus_one(
+    client: AsyncClient, bsb_loaded: None, db_session, engine
+) -> None:
+    """The chapter endpoint issues a fixed number of footnote/cross-ref queries
+    regardless of how many verses/notes the chapter has — not one per verse or
+    per footnote. Counts SELECTs against the footnotes and cross_references
+    tables via a before_cursor_execute listener.
+    """
+    from sqlalchemy import event
+
+    await _register(client)
+    await _load_translation(db_session, enrich_notes=True)
+
+    footnote_queries: list[str] = []
+    xref_queries: list[str] = []
+
+    def _listen(conn, cursor, statement, parameters, context, executemany):
+        normalized = " ".join(statement.split()).lower()
+        if normalized.startswith("select") and " footnotes" in normalized:
+            footnote_queries.append(normalized)
+        if normalized.startswith("select") and " cross_references" in normalized:
+            xref_queries.append(normalized)
+
+    event.listen(engine.sync_engine, "before_cursor_execute", _listen)
+    try:
+        response = await client.get(_chapter_url("NETT", "Genesis", 1))
+        assert response.status_code == 200
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", _listen)
+
+    # Exactly one footnotes query and one cross_references query for the whole
+    # chapter (Genesis 1 has 5 verses and 2 footnotes here).
+    assert len(footnote_queries) == 1, footnote_queries
+    assert len(xref_queries) == 1, xref_queries
