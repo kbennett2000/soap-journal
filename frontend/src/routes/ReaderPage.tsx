@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { BookPicker } from "@/components/reader/BookPicker";
 import { ChapterContent } from "@/components/reader/ChapterContent";
@@ -370,6 +370,14 @@ function ControlsBar(props: ControlsBarProps): JSX.Element {
         currentCode={props.translationCode}
         onChange={props.onTranslationChange}
       />
+      <Link
+        to={`/read/search?translation=${encodeURIComponent(props.translationCode)}`}
+        aria-label="Search scripture"
+        data-testid="scripture-search-link"
+        className="inline-flex h-9 items-center gap-1 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+      >
+        🔍 Search Scripture
+      </Link>
       {!props.isCompareMode && (
         <button
           type="button"

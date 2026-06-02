@@ -7,6 +7,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { SettingsTab } from "@/components/admin/SettingsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
 import { AdminPage } from "@/routes/AdminPage";
+import { BibleSearchPage } from "@/routes/BibleSearchPage";
 import { CalendarPage } from "@/routes/CalendarPage";
 import { DashboardPage } from "@/routes/DashboardPage";
 import { EntryDetailPage } from "@/routes/EntryDetailPage";
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/", element: protectedElement(<DashboardPage />) },
   { path: "/read", element: protectedElement(<ReaderPage />) },
+  { path: "/read/search", element: protectedElement(<BibleSearchPage />) },
   {
     path: "/read/:translationCode/:bookName/:chapterNumber",
     element: protectedElement(<ReaderPage />),
