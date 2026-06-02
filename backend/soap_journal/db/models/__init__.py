@@ -1,3 +1,4 @@
+from soap_journal.db import fts as _fts  # noqa: F401  attach FTS5 create/drop DDL hooks
 from soap_journal.db.models.book import Book
 from soap_journal.db.models.chapter import Chapter
 from soap_journal.db.models.cross_reference import CrossReference

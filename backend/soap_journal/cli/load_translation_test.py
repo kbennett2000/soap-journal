@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 from pydantic import ValidationError
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from soap_journal.cli.load_translation import (
@@ -15,6 +15,7 @@ from soap_journal.cli.load_translation import (
     load_translation_command,
 )
 from soap_journal.core.bible.books import ALL_BOOKS
+from soap_journal.db.fts import BACKFILL_NOTES_FTS, BACKFILL_VERSES_FTS
 from soap_journal.db.models.book import Book
 from soap_journal.db.models.chapter import Chapter
 from soap_journal.db.models.cross_reference import CrossReference
@@ -45,6 +46,9 @@ async def clean_translations(db_session: AsyncSession) -> AsyncSession:
     """
     for model in (CrossReference, Footnote, Heading, Verse, Chapter, Book, Translation):
         await db_session.execute(delete(model))
+    # FTS5 virtual tables aren't ORM models, so clear them explicitly too.
+    await db_session.execute(text("DELETE FROM verses_fts"))
+    await db_session.execute(text("DELETE FROM notes_fts"))
     await db_session.flush()
     return db_session
 
@@ -367,6 +371,117 @@ async def test_reload_replaces_cross_references_cleanly(
         await db_session.execute(select(func.count()).select_from(Footnote))
     ).scalar_one()
     assert footnote_count == 2  # one plain + one rich
+
+
+# ---- FTS5 search index (ADR-0003 Cycle 1) ----------------------------------
+
+
+async def _fts_count(db: AsyncSession, table: str, tid: int | None = None) -> int:
+    sql = f"SELECT count(*) FROM {table}"
+    params: dict[str, int] = {}
+    if tid is not None:
+        sql += " WHERE translation_id = :tid"
+        params["tid"] = tid
+    return (await db.execute(text(sql), params)).scalar_one()
+
+
+async def _match_count(db: AsyncSession, table: str, term: str) -> int:
+    # table is a trusted literal; the search term is bound.
+    sql = f"SELECT count(*) FROM {table} WHERE {table} MATCH :q"  # noqa: S608
+    return (await db.execute(text(sql), {"q": term})).scalar_one()
+
+
+async def test_load_populates_fts_tables(clean_translations: AsyncSession) -> None:
+    db_session = clean_translations
+    await load_canonical_translation(db_session, _full_translation(enrich_notes=True))
+    tid = (
+        await db_session.execute(select(Translation.id).where(Translation.code == "TST"))
+    ).scalar_one()
+
+    # Genesis 1 has 5 verses; the other 65 books contribute 1 each = 70.
+    assert await _fts_count(db_session, "verses_fts", tid) == 70
+    # Two footnotes on Genesis 1 (a plain one + a typed 'tn').
+    assert await _fts_count(db_session, "notes_fts", tid) == 2
+
+    # note_type is carried on notes_fts (one typed 'tn', one plain NULL).
+    types = (
+        (await db_session.execute(text("SELECT note_type FROM notes_fts ORDER BY note_type")))
+        .scalars()
+        .all()
+    )
+    assert "tn" in types
+
+    # MATCH works: the rich note body ("tn The Hebrew term...") is searchable,
+    # and a verse from another book ("Exodus 1:1") matches on its book word.
+    assert await _match_count(db_session, "notes_fts", "hebrew") == 1
+    assert await _match_count(db_session, "verses_fts", "exodus") == 1
+
+
+async def test_reload_replaces_fts_rows_cleanly(clean_translations: AsyncSession) -> None:
+    db_session = clean_translations
+    await load_canonical_translation(db_session, _full_translation(code="TST", enrich_notes=True))
+    await load_canonical_translation(db_session, _full_translation(code="TST", enrich_notes=True))
+
+    # Teardown-first means the second load replaced, not doubled: global counts
+    # equal a single translation's contribution (70 verses, 2 notes).
+    assert await _fts_count(db_session, "verses_fts") == 70
+    assert await _fts_count(db_session, "notes_fts") == 2
+
+
+async def test_plain_translation_populates_verses_not_notes(
+    clean_translations: AsyncSession,
+) -> None:
+    db_session = clean_translations
+    # No enrich flags => 66 books x 1 verse, zero footnotes.
+    await load_canonical_translation(db_session, _full_translation())
+    tid = (
+        await db_session.execute(select(Translation.id).where(Translation.code == "TST"))
+    ).scalar_one()
+    assert await _fts_count(db_session, "verses_fts", tid) == 66
+    assert await _fts_count(db_session, "notes_fts", tid) == 0
+
+
+async def test_fts_teardown_is_scoped_to_one_translation(
+    clean_translations: AsyncSession,
+) -> None:
+    db_session = clean_translations
+    await load_canonical_translation(db_session, _full_translation(code="AAA", enrich_notes=True))
+    await load_canonical_translation(db_session, _full_translation(code="BBB", enrich_notes=True))
+    bbb = (
+        await db_session.execute(select(Translation.id).where(Translation.code == "BBB"))
+    ).scalar_one()
+
+    # Reloading AAA must not touch BBB's FTS rows (teardown is per translation_id).
+    await load_canonical_translation(db_session, _full_translation(code="AAA", enrich_notes=True))
+    assert await _fts_count(db_session, "verses_fts", bbb) == 70
+    assert await _fts_count(db_session, "notes_fts", bbb) == 2
+    # Two translations' worth of FTS rows in total, no orphans.
+    assert await _fts_count(db_session, "verses_fts") == 140
+    assert await _fts_count(db_session, "notes_fts") == 4
+
+
+async def test_migration_backfill_makes_existing_rows_searchable(
+    clean_translations: AsyncSession,
+) -> None:
+    # Simulate a pre-migration DB: verses/footnotes present but FTS empty, then
+    # run the exact backfill SQL the Alembic migration uses and confirm the
+    # rows become searchable. (Guards the silent-failure trap for the bundled
+    # translations that predate the FTS tables.)
+    db_session = clean_translations
+    await load_canonical_translation(db_session, _full_translation(enrich_notes=True))
+
+    await db_session.execute(text("DELETE FROM verses_fts"))
+    await db_session.execute(text("DELETE FROM notes_fts"))
+    assert await _fts_count(db_session, "verses_fts") == 0
+    assert await _fts_count(db_session, "notes_fts") == 0
+
+    await db_session.execute(text(BACKFILL_VERSES_FTS))
+    await db_session.execute(text(BACKFILL_NOTES_FTS))
+
+    assert await _fts_count(db_session, "verses_fts") == 70
+    assert await _fts_count(db_session, "notes_fts") == 2
+    # Searchable again after the backfill.
+    assert await _match_count(db_session, "verses_fts", "exodus") == 1
 
 
 # ---- CLI surface -----------------------------------------------------------

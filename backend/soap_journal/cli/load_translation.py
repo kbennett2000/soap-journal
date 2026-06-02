@@ -7,8 +7,8 @@ Behavior:
 - Validates the input against `CanonicalTranslation`. Validation failure
   exits non-zero with a helpful message and writes nothing.
 - If a translation with the same `code` already exists, deletes it and
-  every dependent row (cross_references -> footnotes -> verses -> headings
-  -> chapters -> books -> translation) in dependency order — SQLite does not enforce
+  every dependent row (FTS rows -> cross_references -> footnotes -> verses ->
+  headings -> chapters -> books -> translation) in dependency order — SQLite does not enforce
   ON DELETE CASCADE without PRAGMA foreign_keys=ON, so the loader does
   it explicitly. The replacement and the original delete share one
   transaction; a load that fails halfway rolls everything back.
@@ -22,10 +22,16 @@ import sys
 from pathlib import Path
 
 from pydantic import ValidationError
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from soap_journal.config import get_settings
+from soap_journal.db.fts import (
+    DELETE_NOTES_FTS_FOR_TRANSLATION,
+    DELETE_VERSES_FTS_FOR_TRANSLATION,
+    POPULATE_NOTES_FTS_FOR_TRANSLATION,
+    POPULATE_VERSES_FTS_FOR_TRANSLATION,
+)
 from soap_journal.db.models.book import Book
 from soap_journal.db.models.chapter import Chapter
 from soap_journal.db.models.cross_reference import CrossReference
@@ -47,6 +53,11 @@ async def _delete_existing_translation(db: AsyncSession, code: str) -> bool:
     existing = result.scalar_one_or_none()
     if existing is None:
         return False
+
+    # Tear down the FTS rows first (they shadow verses/footnotes by rowid and
+    # are scoped by translation_id), so the row deletes below can't orphan them.
+    await db.execute(text(DELETE_VERSES_FTS_FOR_TRANSLATION), {"tid": existing.id})
+    await db.execute(text(DELETE_NOTES_FTS_FOR_TRANSLATION), {"tid": existing.id})
 
     book_ids = [
         bid
@@ -203,6 +214,11 @@ async def _insert_translation(db: AsyncSession, payload: CanonicalTranslation) -
             )
 
     await db.flush()
+
+    # Populate the FTS5 search tables from this translation's now-flushed rows.
+    # rowid mirrors verses.id / footnotes.id so search joins straight back.
+    await db.execute(text(POPULATE_VERSES_FTS_FOR_TRANSLATION), {"tid": translation.id})
+    await db.execute(text(POPULATE_NOTES_FTS_FOR_TRANSLATION), {"tid": translation.id})
 
 
 async def load_canonical_translation(
