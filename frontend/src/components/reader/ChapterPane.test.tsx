@@ -115,7 +115,7 @@ describe("ChapterPane", () => {
 
     renderPane({ translationCode: "KJV", onVerseClick });
     await screen.findByTestId("verse-16");
-    await user.click(screen.getByTestId("verse-16"));
+    await user.click(screen.getByTestId("verse-16-new-entry"));
 
     await waitFor(() => {
       expect(onVerseClick).toHaveBeenCalledWith(

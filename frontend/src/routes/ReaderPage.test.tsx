@@ -256,7 +256,8 @@ describe("ReaderPage", () => {
     );
 
     await screen.findByTestId("verse-16");
-    await user.click(screen.getByTestId("verse-16"));
+    // The verse number is the new-entry control; verse text is now selectable.
+    await user.click(screen.getByTestId("verse-16-new-entry"));
 
     expect(await screen.findByTestId("new-entry-state")).toHaveTextContent(
       "John 3:16 / BSB",
@@ -293,11 +294,14 @@ describe("ReaderPage", () => {
       ),
     );
 
-    // In paragraph mode the chapter is wrapped in a <p>; verses become
-    // inline buttons within it. The verse-16 testid still exists.
+    // In paragraph mode the chapter is wrapped in a <p>; each verse is now an
+    // inline, selectable <span data-verse> with the verse-number new-entry
+    // control as a button inside it.
     const verse = screen.getByTestId("verse-16");
-    expect(verse.tagName).toBe("BUTTON");
+    expect(verse.tagName).toBe("SPAN");
+    expect(verse).toHaveAttribute("data-verse", "16");
     expect(verse.closest("p")).not.toBeNull();
+    expect(within(verse).getByTestId("verse-16-new-entry").tagName).toBe("BUTTON");
     expect(window.localStorage.getItem(STORAGE_KEYS.readerLayout)).toBe('"paragraph"');
   });
 
@@ -424,8 +428,10 @@ describe("ReaderPage — compare mode", () => {
     );
 
     const comparisonPane = await screen.findByRole("region", { name: /comparison translation/i });
-    const verse16 = await within(comparisonPane).findByTestId("verse-16");
-    await user.click(verse16);
+    const verse16NewEntry = await within(comparisonPane).findByTestId(
+      "verse-16-new-entry",
+    );
+    await user.click(verse16NewEntry);
 
     expect(await screen.findByTestId("new-entry-state")).toHaveTextContent(
       "John 3:16 / KJV",

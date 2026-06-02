@@ -2,13 +2,25 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { isOmittedVerse } from "@/lib/bibleText";
-import { buildVerseSegments } from "@/lib/verseSegments";
+import {
+  HIGHLIGHT_COLORS,
+  HIGHLIGHT_COLOR_LABELS,
+  highlightVar,
+} from "@/lib/highlightColors";
+import {
+  resolveSelection as liveResolveSelection,
+  type VerseSelection,
+} from "@/lib/selection";
+import { buildVerseParts, type HighlightSpan } from "@/lib/verseSegments";
 import type { FontSize, ReaderLayout } from "@/lib/storage";
 import type {
+  Annotation,
+  AnnotationCreate,
   ChapterResponse,
   CrossRefResponse,
   FootnoteResponse,
   HeadingResponse,
+  HighlightColor,
   NoteType,
   VerseResponse,
 } from "@/types/api";
@@ -19,13 +31,33 @@ const FONT_SIZE_CLASS: Record<FontSize, string> = {
   L: "text-lg leading-9",
 };
 
+// The verse-number control is the app's primary "new entry" action, so it must
+// read as a real, adequately-sized, focusable target — not an invisible
+// superscript (ADR-0005 Cycle 5b). Mobile tap-target sizing is 5c's concern.
+const NUMBER_BUTTON_CLASS =
+  "mr-2 inline-flex min-w-[1.75rem] select-none items-center justify-center rounded px-1 align-baseline text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100";
+
+const NUMBER_BUTTON_INLINE_CLASS =
+  "mr-1 select-none rounded px-0.5 align-super text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100";
+
 interface ChapterContentProps {
   chapter: ChapterResponse;
   layout: ReaderLayout;
   fontSize: FontSize;
   highlightRange?: { start: number; end: number };
   onVerseClick: (verse: VerseResponse) => void;
+  // ---- highlight layer (opt-in; omitted disables selection/render) --------
+  /** Highlights to render; filtered here to the chapter's translation_code. */
+  annotations?: Annotation[];
+  onCreateHighlight?: (input: AnnotationCreate) => void;
+  onRemoveHighlight?: (annotationId: number) => void;
+  /** Injectable selection reader for tests; defaults to the live one. */
+  resolveSelectionFn?: () => VerseSelection | null;
 }
+
+type PopoverState =
+  | { mode: "create"; selection: VerseSelection; top: number; left: number }
+  | { mode: "remove"; annotation: Annotation; top: number; left: number };
 
 export function ChapterContent({
   chapter,
@@ -33,6 +65,10 @@ export function ChapterContent({
   fontSize,
   highlightRange,
   onVerseClick,
+  annotations,
+  onCreateHighlight,
+  onRemoveHighlight,
+  resolveSelectionFn = liveResolveSelection,
 }: ChapterContentProps): JSX.Element {
   // Group headings by the verse number they precede so renderers can
   // emit them inline at the right spot.
@@ -46,14 +82,89 @@ export function ChapterContent({
   const sizeClass = FONT_SIZE_CLASS[fontSize];
   const verseRef = useScrollToFirstHighlight(highlightRange?.start);
 
-  // The open translator's note renders as a single panel at the article level
-  // (never inside a verse <button>, so its cross-ref <Link>s aren't nested in a
-  // button). Cleared when the chapter changes.
+  // The open translator's note renders as a single panel at the article level.
   const [openNote, setOpenNote] = useState<FootnoteResponse | null>(null);
+
+  // Highlights only render in the translation they were made in (inherited from
+  // ADR-0004). The list query is already per-translation, but filter defensively
+  // so a stale cross-translation row can never leak in.
+  const chapterAnnotations = (annotations ?? []).filter(
+    (a) => a.translation_code === chapter.translation_code,
+  );
+  const highlightLayerEnabled =
+    onCreateHighlight !== undefined || onRemoveHighlight !== undefined;
+
+  const [popover, setPopover] = useState<PopoverState | null>(null);
+
+  function handleMouseUp(event: React.MouseEvent): void {
+    if (!highlightLayerEnabled) return;
+    const selection = resolveSelectionFn();
+    // `rangeToVerseSelection` returns null for a collapsed selection, so any
+    // non-null value is a real drag. (Don't gate on charEnd > charStart: across
+    // verses those offsets index different verses and can be in any order.)
+    if (selection) {
+      // Single-verse → offer to create; cross-verse is out of scope for 5b, so
+      // refuse (close any popover).
+      if (selection.verseStart === selection.verseEnd && onCreateHighlight) {
+        setPopover({
+          mode: "create",
+          selection,
+          top: selection.rect.top,
+          left: selection.rect.left,
+        });
+      } else {
+        setPopover(null);
+      }
+      return;
+    }
+    // Collapsed click: a click on an existing highlight opens the remove popover.
+    const target = event.target as HTMLElement;
+    const hit = target.closest?.("[data-highlight-id]") as HTMLElement | null;
+    if (hit && onRemoveHighlight) {
+      const id = Number(hit.getAttribute("data-highlight-id"));
+      const annotation = chapterAnnotations.find((a) => a.id === id);
+      if (annotation) {
+        const rect = hit.getBoundingClientRect();
+        setPopover({ mode: "remove", annotation, top: rect.top, left: rect.left });
+        return;
+      }
+    }
+    setPopover(null);
+  }
+
+  function clearLiveSelection(): void {
+    if (typeof window !== "undefined") {
+      window.getSelection?.()?.removeAllRanges();
+    }
+  }
+
+  function handlePickColor(color: HighlightColor): void {
+    if (popover?.mode !== "create" || !onCreateHighlight) return;
+    const sel = popover.selection;
+    onCreateHighlight({
+      translation_code: chapter.translation_code,
+      book: chapter.book.name,
+      chapter: chapter.chapter_number,
+      verse_start: sel.verseStart,
+      verse_end: sel.verseEnd,
+      char_start: sel.charStart,
+      char_end: sel.charEnd,
+      color,
+    });
+    setPopover(null);
+    clearLiveSelection();
+  }
+
+  function handleRemove(): void {
+    if (popover?.mode !== "remove" || !onRemoveHighlight) return;
+    onRemoveHighlight(popover.annotation.id);
+    setPopover(null);
+  }
 
   return (
     <article
       data-testid="chapter-content"
+      onMouseUp={handleMouseUp}
       className={`prose prose-slate max-w-none dark:prose-invert ${sizeClass}`}
     >
       <h1 className="!mb-2 !mt-0 text-2xl font-semibold">
@@ -64,6 +175,7 @@ export function ChapterContent({
           chapter={chapter}
           headingsByVerse={headingsByVerse}
           highlightRange={highlightRange}
+          annotations={chapterAnnotations}
           verseRef={verseRef}
           onVerseClick={onVerseClick}
           onNoteClick={setOpenNote}
@@ -73,6 +185,7 @@ export function ChapterContent({
           chapter={chapter}
           headingsByVerse={headingsByVerse}
           highlightRange={highlightRange}
+          annotations={chapterAnnotations}
           verseRef={verseRef}
           onVerseClick={onVerseClick}
           onNoteClick={setOpenNote}
@@ -83,6 +196,14 @@ export function ChapterContent({
           note={openNote}
           translationCode={chapter.translation_code}
           onClose={() => setOpenNote(null)}
+        />
+      )}
+      {popover && (
+        <SelectionPopover
+          popover={popover}
+          onPick={handlePickColor}
+          onRemove={handleRemove}
+          onCancel={() => setPopover(null)}
         />
       )}
     </article>
@@ -114,17 +235,33 @@ function inHighlight(
   return verseNumber >= range.start && verseNumber <= range.end;
 }
 
-function verseClassNames(verse: VerseResponse, highlighted: boolean): string {
-  const base = "rounded text-left transition-colors";
-  const click = "cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800";
+/**
+ * Tone classes for a verse container. The container is now selectable text
+ * (not a button), so it carries no click/hover affordance — that lives on the
+ * verse-number control. Range-highlight (navigation flash), red-letter, and
+ * omitted-verse styling remain.
+ */
+function verseToneClasses(verse: VerseResponse, highlighted: boolean): string {
   const omitted = isOmittedVerse(verse)
     ? "italic text-slate-400 dark:text-slate-500"
     : "";
   const red = verse.is_red_letter ? "text-rose-700 dark:text-rose-300" : "";
-  const hi = highlighted
-    ? "bg-amber-100 dark:bg-amber-900/40"
-    : "";
-  return [base, click, omitted, red, hi].filter(Boolean).join(" ");
+  const hi = highlighted ? "bg-amber-100 dark:bg-amber-900/40" : "";
+  return [omitted, red, hi].filter(Boolean).join(" ");
+}
+
+/** A verse's covering highlights, projected into its char-coordinate space. */
+function highlightSpansForVerse(
+  annotations: Annotation[],
+  verse: VerseResponse,
+): HighlightSpan[] {
+  return annotations
+    .filter((a) => a.verse_start <= verse.number && a.verse_end >= verse.number)
+    .map((a) => ({
+      start: a.verse_start === verse.number ? a.char_start : 0,
+      end: a.verse_end === verse.number ? a.char_end : verse.text.length,
+      annotation: a,
+    }));
 }
 
 interface HeadingProps {
@@ -203,37 +340,128 @@ function NoteMarker({ number, onClick }: NoteMarkerProps): JSX.Element {
 
 interface VerseBodyProps {
   verse: VerseResponse;
+  highlightSpans: HighlightSpan[];
   onNoteClick: (note: FootnoteResponse) => void;
 }
 
 /**
- * Render verse text with typed-note markers interleaved at their char_offset,
- * followed by the end-of-verse FootnoteMarker for plain footnotes. For a verse
- * with no typed notes this is exactly the previous output (one text span +
- * FootnoteMarker over all footnotes), so plain translations are unchanged.
+ * Render verse text as a sequence of `data-text-segment` spans (the offset
+ * coordinate space the selection mapper and backend `char_offset` agree on),
+ * with typed-note markers interleaved and highlight backgrounds applied to
+ * covered runs. Markers and the verse-number control are NOT data-text-segment,
+ * so they're zero-width in that space. A verse with no notes/highlights renders
+ * as one plain span, so plain translations are unchanged.
  */
-function VerseBody({ verse, onNoteClick }: VerseBodyProps): JSX.Element {
-  const parts = buildVerseSegments(verse.text, verse.footnotes);
+function VerseBody({ verse, highlightSpans, onNoteClick }: VerseBodyProps): JSX.Element {
+  const parts = buildVerseParts(verse.text, verse.footnotes, highlightSpans);
   const plainFootnotes = verse.footnotes.filter((f) => f.char_offset === null);
   return (
     <>
-      {parts.map((part, i) =>
-        part.type === "text" ? (
-          <span key={`text-${i}`}>{part.text}</span>
-        ) : (
-          <NoteMarker
-            key={`note-${part.note.id}`}
-            number={part.number}
-            onClick={(event) => {
-              // Don't let the marker trigger the verse's new-entry click.
-              event.stopPropagation();
-              onNoteClick(part.note);
-            }}
-          />
-        ),
-      )}
+      {parts.map((part, i) => {
+        if (part.type === "marker") {
+          return (
+            <NoteMarker
+              key={`note-${part.note.id}`}
+              number={part.number}
+              onClick={(event) => {
+                // Don't let the marker trigger a highlight/selection action.
+                event.stopPropagation();
+                onNoteClick(part.note);
+              }}
+            />
+          );
+        }
+        const top = part.highlights[part.highlights.length - 1];
+        if (!top) {
+          return (
+            <span key={`text-${i}`} data-text-segment="">
+              {part.text}
+            </span>
+          );
+        }
+        return (
+          <span
+            key={`text-${i}`}
+            data-text-segment=""
+            data-highlight-id={top.id}
+            className="cursor-pointer rounded-sm"
+            style={{ backgroundColor: highlightVar(top.color) }}
+          >
+            {part.text}
+          </span>
+        );
+      })}
       <FootnoteMarker footnotes={plainFootnotes} />
     </>
+  );
+}
+
+interface SelectionPopoverProps {
+  popover: PopoverState;
+  onPick: (color: HighlightColor) => void;
+  onRemove: () => void;
+  onCancel: () => void;
+}
+
+function SelectionPopover({
+  popover,
+  onPick,
+  onRemove,
+  onCancel,
+}: SelectionPopoverProps): JSX.Element {
+  // Escape dismisses the popover (keyboard parity with the Cancel button).
+  useEffect(() => {
+    function onKey(event: KeyboardEvent): void {
+      if (event.key === "Escape") onCancel();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return (
+    <div
+      data-testid="highlight-popover"
+      role="dialog"
+      aria-label="Highlight"
+      style={{
+        position: "fixed",
+        top: Math.max(8, popover.top - 44),
+        left: Math.max(8, popover.left),
+      }}
+      // Keep the popover's own mouse events from re-triggering the article's
+      // selection handler (which would close it before a swatch click lands).
+      onMouseUp={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      className="z-20 flex items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+    >
+      {popover.mode === "create" &&
+        HIGHLIGHT_COLORS.map((color) => (
+          <button
+            key={color}
+            type="button"
+            aria-label={`Highlight ${HIGHLIGHT_COLOR_LABELS[color]}`}
+            onClick={() => onPick(color)}
+            style={{ backgroundColor: highlightVar(color) }}
+            className="h-6 w-6 rounded-full border border-slate-300 transition-transform hover:scale-110 dark:border-slate-600"
+          />
+        ))}
+      {popover.mode === "remove" && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="rounded px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-900/30"
+        >
+          Remove highlight
+        </button>
+      )}
+      <button
+        type="button"
+        aria-label="Cancel"
+        onClick={onCancel}
+        className="ml-1 rounded px-1.5 py-1 text-xs text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+      >
+        ✕
+      </button>
+    </div>
   );
 }
 
@@ -305,6 +533,7 @@ interface LayoutProps {
   chapter: ChapterResponse;
   headingsByVerse: Map<number, HeadingResponse[]>;
   highlightRange?: { start: number; end: number };
+  annotations: Annotation[];
   verseRef: (el: HTMLElement | null) => void;
   onVerseClick: (verse: VerseResponse) => void;
   onNoteClick: (note: FootnoteResponse) => void;
@@ -314,6 +543,7 @@ function VerseLayout({
   chapter,
   headingsByVerse,
   highlightRange,
+  annotations,
   verseRef,
   onVerseClick,
   onNoteClick,
@@ -324,23 +554,29 @@ function VerseLayout({
         const headings = headingsByVerse.get(verse.number) ?? [];
         const highlighted = inHighlight(verse.number, highlightRange);
         const isStart = highlightRange?.start === verse.number;
+        const spans = highlightSpansForVerse(annotations, verse);
         return (
           <div key={verse.id}>
             {headings.map((h) => (
               <Heading key={`${h.before_verse}-${h.text}`} heading={h} />
             ))}
-            <button
-              type="button"
+            <div
               ref={isStart ? verseRef : undefined}
-              onClick={() => onVerseClick(verse)}
+              data-verse={verse.number}
               data-testid={`verse-${verse.number}`}
-              className={`block w-full px-2 py-1 ${verseClassNames(verse, highlighted)}`}
+              className={`rounded px-2 py-1 ${verseToneClasses(verse, highlighted)}`}
             >
-              <span className="mr-2 inline-block min-w-[1.5rem] text-right font-semibold text-slate-400 dark:text-slate-500">
+              <button
+                type="button"
+                data-testid={`verse-${verse.number}-new-entry`}
+                aria-label={`New entry on ${chapter.book.name} ${chapter.chapter_number}:${verse.number}`}
+                onClick={() => onVerseClick(verse)}
+                className={NUMBER_BUTTON_CLASS}
+              >
                 {verse.number}
-              </span>
-              <VerseBody verse={verse} onNoteClick={onNoteClick} />
-            </button>
+              </button>
+              <VerseBody verse={verse} highlightSpans={spans} onNoteClick={onNoteClick} />
+            </div>
           </div>
         );
       })}
@@ -352,14 +588,13 @@ function ParagraphLayout({
   chapter,
   headingsByVerse,
   highlightRange,
+  annotations,
   verseRef,
   onVerseClick,
   onNoteClick,
 }: LayoutProps): JSX.Element {
-  // Walk the chapter in order, emitting <h2> blocks where a heading
-  // precedes a verse and accumulating verses into a running <p> in
-  // between. Headings break the current paragraph so the page reads as
-  // alternating prose paragraphs and section breaks.
+  // Walk the chapter in order, emitting <h2> blocks where a heading precedes a
+  // verse and accumulating verses into a running <p> in between.
   const nodes: React.ReactNode[] = [];
   let buffer: React.ReactNode[] = [];
 
@@ -383,20 +618,26 @@ function ParagraphLayout({
     }
     const highlighted = inHighlight(verse.number, highlightRange);
     const isStart = highlightRange?.start === verse.number;
+    const spans = highlightSpansForVerse(annotations, verse);
     buffer.push(
-      <button
+      <span
         key={verse.id}
-        type="button"
         ref={isStart ? verseRef : undefined}
-        onClick={() => onVerseClick(verse)}
+        data-verse={verse.number}
         data-testid={`verse-${verse.number}`}
-        className={`inline ${verseClassNames(verse, highlighted)} px-1`}
+        className={verseToneClasses(verse, highlighted)}
       >
-        <sup className="mr-1 font-semibold text-slate-400 dark:text-slate-500">
+        <button
+          type="button"
+          data-testid={`verse-${verse.number}-new-entry`}
+          aria-label={`New entry on ${chapter.book.name} ${chapter.chapter_number}:${verse.number}`}
+          onClick={() => onVerseClick(verse)}
+          className={NUMBER_BUTTON_INLINE_CLASS}
+        >
           {verse.number}
-        </sup>
-        <VerseBody verse={verse} onNoteClick={onNoteClick} />
-      </button>,
+        </button>
+        <VerseBody verse={verse} highlightSpans={spans} onNoteClick={onNoteClick} />
+      </span>,
     );
     buffer.push(" ");
   }

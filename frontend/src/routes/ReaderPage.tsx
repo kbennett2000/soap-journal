@@ -13,6 +13,11 @@ import { SettingsPopover } from "@/components/reader/SettingsPopover";
 import { TranslationPicker } from "@/components/reader/TranslationPicker";
 import { useChapter, useTranslationDetail, useTranslations } from "@/hooks/useBible";
 import {
+  useAnnotations,
+  useCreateAnnotation,
+  useDeleteAnnotation,
+} from "@/hooks/useAnnotations";
+import {
   readFontSize,
   readLastLocation,
   readLayout,
@@ -86,6 +91,16 @@ function ReaderInner({
   const translationsQuery = useTranslations();
   const translationDetailQuery = useTranslationDetail(translationCode);
   const chapterQuery = useChapter(translationCode, bookName, chapterNumber);
+
+  // Highlights for the primary pane (single-verse create/remove, ADR-0005 5b).
+  // Compare panes don't wire the highlight layer in 5b — that's a 5c concern.
+  const annotationsQuery = useAnnotations({
+    translation: translationCode,
+    book: bookName,
+    chapter: chapterNumber,
+  });
+  const createHighlight = useCreateAnnotation();
+  const deleteHighlight = useDeleteAnnotation();
 
   const [fontSize, setFontSize] = useState<FontSize>(() => readFontSize());
   const [layout, setLayout] = useState<ReaderLayout>(() => readLayout());
@@ -304,6 +319,9 @@ function ReaderInner({
               fontSize={fontSize}
               highlightRange={highlightRange}
               onVerseClick={(v) => handleVerseClick(v)}
+              annotations={annotationsQuery.data?.annotations ?? []}
+              onCreateHighlight={(input) => createHighlight.mutate(input)}
+              onRemoveHighlight={(id) => deleteHighlight.mutate(id)}
             />
           )}
         </>

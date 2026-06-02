@@ -160,6 +160,52 @@ export interface SearchResponse {
   offset: number;
 }
 
+// ---- Annotations / highlights (ADR-0005) ----------------------------------
+
+/** The six highlight colors — mirrors the backend `HighlightColor` Literal. */
+export type HighlightColor =
+  | "yellow"
+  | "green"
+  | "blue"
+  | "pink"
+  | "orange"
+  | "purple";
+
+export interface Annotation {
+  id: number;
+  translation_code: string;
+  book: string; // canonical book name
+  chapter: number;
+  verse_start: number;
+  verse_end: number;
+  char_start: number;
+  char_end: number;
+  color: HighlightColor;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AnnotationCreate {
+  translation_code: string;
+  book: string;
+  chapter: number;
+  verse_start: number;
+  verse_end: number;
+  char_start: number;
+  char_end: number;
+  color: HighlightColor;
+  note?: string | null;
+}
+
+export interface AnnotationEnvelope {
+  annotation: Annotation;
+}
+
+export interface AnnotationListResponse {
+  annotations: Annotation[];
+}
+
 // ---- Entries + tags -------------------------------------------------------
 
 export interface EntryTagSummary {

@@ -7,6 +7,7 @@
  */
 
 import type {
+  Annotation,
   BookSummary,
   ChapterResponse,
   FootnoteResponse,
@@ -99,6 +100,25 @@ export function makeVerse(overrides: Partial<VerseResponse> = {}): VerseResponse
     text: "Sample verse text.",
     is_red_letter: false,
     footnotes: [],
+    ...overrides,
+  };
+}
+
+export function makeAnnotation(overrides: Partial<Annotation> = {}): Annotation {
+  // Defaults to a single-verse NET highlight over "For G" of John 3:16.
+  return {
+    id: 1,
+    translation_code: "NET",
+    book: "John",
+    chapter: 3,
+    verse_start: 16,
+    verse_end: 16,
+    char_start: 0,
+    char_end: 5,
+    color: "yellow",
+    note: null,
+    created_at: "2026-06-02T00:00:00Z",
+    updated_at: "2026-06-02T00:00:00Z",
     ...overrides,
   };
 }

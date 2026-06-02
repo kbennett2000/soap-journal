@@ -1,22 +1,27 @@
 /**
  * Split a verse's plain text into ordered parts — text runs interleaved with
- * inline note markers at each typed note's `char_offset`.
+ * inline note markers (at each typed note's `char_offset`) and tagged with any
+ * highlights that cover them.
  *
- * Pure and React-free (unit-tested in isolation). A marker-only
- * re-implementation of the NET app's verse-part splitting; highlight spans are
- * deliberately out of scope here (ADR-0005).
+ * Pure and React-free (unit-tested in isolation). A re-implementation of the
+ * NET app's verse-part splitting. Both note markers and highlight edges are
+ * breakpoints; each emitted text run carries the highlights covering it (a
+ * stack, top-most last) so 5c overlap stacking can reuse the shape — 5b renders
+ * the single top highlight.
  *
- * Only typed notes participate: a footnote with `char_offset === null` (every
- * plain-translation footnote) is ignored here and rendered separately as an
- * end-of-verse marker. A verse with no typed notes returns a single text part,
- * so plain translations render exactly as before.
+ * Only typed notes participate as markers: a footnote with `char_offset === null`
+ * (every plain-translation footnote) is ignored here and rendered separately as
+ * an end-of-verse marker. A verse with no typed notes and no highlights returns
+ * a single text part, so plain translations render exactly as before.
  */
 
-import type { FootnoteResponse } from "@/types/api";
+import type { Annotation, FootnoteResponse } from "@/types/api";
 
 export interface VerseTextPart {
   type: "text";
   text: string;
+  /** Highlights covering this run (top-most last); empty when unhighlighted. */
+  highlights: Annotation[];
 }
 
 export interface VerseMarkerPart {
@@ -28,13 +33,21 @@ export interface VerseMarkerPart {
 
 export type VersePart = VerseTextPart | VerseMarkerPart;
 
+/** A highlight's reach within a single verse, in plain-text char coordinates. */
+export interface HighlightSpan {
+  start: number;
+  end: number;
+  annotation: Annotation;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, max));
 }
 
-export function buildVerseSegments(
+export function buildVerseParts(
   text: string,
   footnotes: FootnoteResponse[],
+  highlights: HighlightSpan[] = [],
 ): VersePart[] {
   const typed = footnotes
     .filter((f): f is FootnoteResponse & { char_offset: number } => f.char_offset !== null)
@@ -43,21 +56,49 @@ export function buildVerseSegments(
     // ordinal so co-located markers render in a deterministic sequence.
     .sort((a, b) => a.offset - b.offset || a.note.ordinal - b.note.ordinal);
 
-  if (typed.length === 0) {
-    return [{ type: "text", text }];
+  const spans = highlights
+    .map((h) => ({
+      start: clamp(h.start, 0, text.length),
+      end: clamp(h.end, 0, text.length),
+      annotation: h.annotation,
+    }))
+    .filter((h) => h.end > h.start);
+
+  // Fast path: nothing to interleave — one plain text part (unchanged output
+  // for plain translations).
+  if (typed.length === 0 && spans.length === 0) {
+    return [{ type: "text", text, highlights: [] }];
   }
 
-  const parts: VersePart[] = [];
-  let cursor = 0;
-  for (const { note, offset } of typed) {
-    if (offset > cursor) {
-      parts.push({ type: "text", text: text.slice(cursor, offset) });
-      cursor = offset;
-    }
-    parts.push({ type: "marker", note, number: note.ordinal + 1 });
+  // Breakpoints: text bounds ∪ marker offsets ∪ highlight edges.
+  const breaks = new Set<number>([0, text.length]);
+  for (const t of typed) breaks.add(t.offset);
+  for (const s of spans) {
+    breaks.add(s.start);
+    breaks.add(s.end);
   }
-  if (cursor < text.length) {
-    parts.push({ type: "text", text: text.slice(cursor) });
+  const sorted = [...breaks].sort((a, b) => a - b);
+
+  const parts: VersePart[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const at = sorted[i]!;
+    // Markers anchored exactly here, in (offset, ordinal) order.
+    for (const t of typed) {
+      if (t.offset === at) {
+        parts.push({ type: "marker", note: t.note, number: t.note.ordinal + 1 });
+      }
+    }
+    const next = sorted[i + 1];
+    if (next === undefined || next === at) continue;
+    // Breakpoints include every highlight edge, so a segment [at, next) is
+    // either fully inside a highlight or fully outside it — partial overlap is
+    // impossible. Hence "contains" (start ≤ at && end ≥ next), not "overlaps".
+    const covering = spans.filter((s) => s.start <= at && s.end >= next);
+    parts.push({
+      type: "text",
+      text: text.slice(at, next),
+      highlights: covering.map((s) => s.annotation),
+    });
   }
   return parts;
 }

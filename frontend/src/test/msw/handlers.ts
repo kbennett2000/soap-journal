@@ -5,6 +5,7 @@ import {
   makeSettingsEnvelope,
 } from "@/test/utils/admin";
 import {
+  makeAnnotation,
   makeChapter,
   makeSearchResponse,
   makeTranslationDetail,
@@ -19,7 +20,7 @@ import {
   makeTagList,
 } from "@/test/utils/entries";
 import { makeUser } from "@/test/utils/factories";
-import type { AuthEnvelope, SearchScope } from "@/types/api";
+import type { Annotation, AuthEnvelope, SearchScope } from "@/types/api";
 
 /**
  * Default happy-path handlers. Each test overrides the specific
@@ -164,6 +165,30 @@ export const passageEntriesHandler = http.get(
   () => HttpResponse.json(makePassageEntriesResponse(), { status: 200 }),
 );
 
+// ---- annotations / highlights ---------------------------------------------
+
+// Default: a chapter has no highlights, so existing reader tests render
+// unchanged. Tests that exercise highlights override this with `server.use`.
+export const annotationsListHandler = http.get("/api/v1/annotations", () => {
+  return HttpResponse.json({ annotations: [] }, { status: 200 });
+});
+
+export const createAnnotationHandler = http.post(
+  "/api/v1/annotations",
+  async ({ request }) => {
+    const body = (await request.json()) as Partial<Annotation>;
+    return HttpResponse.json(
+      { annotation: makeAnnotation({ ...body, id: 9999 }) },
+      { status: 201 },
+    );
+  },
+);
+
+export const deleteAnnotationHandler = http.delete(
+  "/api/v1/annotations/:annotationId",
+  () => new HttpResponse(null, { status: 204 }),
+);
+
 // ---- admin ----------------------------------------------------------------
 
 export const adminUsersListHandler = http.get("/api/v1/admin/users", () => {
@@ -251,6 +276,9 @@ export const defaultHandlers = [
   deleteEntryHandler,
   tagsListHandler,
   tagsAutocompleteHandler,
+  annotationsListHandler,
+  createAnnotationHandler,
+  deleteAnnotationHandler,
   adminUsersListHandler,
   adminCreateUserHandler,
   adminDeleteUserHandler,

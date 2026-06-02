@@ -66,3 +66,60 @@ must be in the palette.
 - Frontend rendering, selection→offset mapping, multi-verse, overlap, and the responsive editor
   are **out of scope here** (5b/5c, separately planned). Note bodies are plain text for now
   (sanitized markdown is a later option; this repo has no marked/DOMPurify deps).
+
+---
+
+## Cycle 5b addendum — selectability redesign, selection→offset, single-verse create/remove
+
+**Status:** Implemented (2026-06-02). Frontend, desktop-first, single-verse. Multi-verse,
+overlap `+N` stacking, the mobile bottom-sheet / touch path, and full edit (color-change, note
+body) remain 5c.
+
+**Verse markup redesign.** ADR-0004 wrapped each verse in a `<button>` (click → new entry),
+which blocked native text selection. 5b drops that button:
+
+- The verse is a **selectable, non-interactive** element carrying `data-verse={n}` — a `<div>` in
+  verse layout, an inline `<span>` in paragraph layout (`data-testid="verse-{n}"`).
+- The **verse number is the new-entry control**: a focusable `<button
+  data-testid="verse-{n}-new-entry" aria-label="New entry on {book} {ch}:{n}">` with a visible
+  hover/focus affordance and an adequate hit target (it's the app's primary creation action — not
+  an invisible superscript). Mobile tap-target sizing is deferred to 5c.
+- Verse text renders as `<span data-text-segment>` runs. Note markers and the number control are
+  **not** `data-text-segment`, so they are zero-width in the offset coordinate space — making it
+  identical to the backend's `char_offset` and the stored annotation coordinates.
+
+**Selection→offset seam.** `lib/selection.ts` splits a **pure core** from the live read:
+`rangeToVerseSelection(range)` maps a `Range`-like object to `{verseStart, verseEnd, charStart,
+charEnd, rect}` (summing only `[data-text-segment]` text, snapping marker/number points to the
+nearest boundary, normalizing backward selections, returning `null` for collapsed/out-of-verse).
+`resolveSelection()` is the only function touching `window.getSelection()` and just delegates to
+the pure core.
+
+**Testing strategy (the crux risk).** The pure core is unit-tested with **jsdom-constructed real
+`Range`s** over a built verse DOM (marker-skip, multi-segment accumulation, boundary, backward
+normalize, cross-verse, collapsed) — no `getSelection` mocking. Component tests inject the
+resolver (`resolveSelectionFn` prop, default `resolveSelection`) to drive the popover with a
+known selection. The live `resolveSelection()` delegator's real-drag behavior is manual/E2E only.
+
+**Render.** `buildVerseParts(text, footnotes, highlights)` (was `buildVerseSegments`) adds
+highlight edges as breakpoints and tags each text run with the covering highlights (a stack, so
+5c overlap reuses the shape; 5b renders the single top one). Covered runs render as a
+`data-text-segment` span with `background: var(--hl-{color})` and a `data-highlight-id`. The
+six `--hl-<color>` CSS vars live in `index.css` with light values and class-based `.dark`
+overrides. ChapterContent filters annotations to `translation_code === chapter.translation_code`
+before rendering (inherited decision a, belt-and-suspenders over the per-translation list query).
+
+**Create + Remove (single-verse).** A `mouseup` on the chapter resolves the selection: a
+single-verse, non-collapsed selection opens a desktop popover of six color swatches → `POST
+/annotations` with the resolved coords → the chapter's annotations query is invalidated and the
+highlight re-renders. A **cross-verse selection is refused** (no popover) in 5b. Clicking an
+existing highlight opens the same popover with a **Remove** action → `DELETE /annotations/{id}`
+→ re-render (5b ships reversible highlights; color-change/full edit stay 5c). The popover stops
+its own mouse events from re-triggering the chapter handler. Compare panes do not wire the
+highlight layer in 5b (open item for 5c).
+
+**Open for 5c (noted during 5b review):** create/delete mutations are fire-and-forget — a failed
+`POST`/`DELETE` currently surfaces no user feedback (the popover has already dismissed); wire an
+error toast / re-open on failure. The popover clamps its left edge only (right-edge overflow at
+the viewport edge) and is a `role="dialog"` without a focus trap (Escape-to-dismiss is wired in
+5b; full focus management is 5c). Compare panes don't wire the highlight layer.

@@ -89,10 +89,15 @@ describe("ChapterContent — translator's notes", () => {
     expect(onVerseClick).not.toHaveBeenCalled();
   });
 
-  it("a click on the verse text DOES trigger the verse click", () => {
+  it("clicking the verse text does NOT navigate; the number control does", () => {
     const onVerseClick = vi.fn();
     renderChapter(netChapter(), onVerseClick);
+    // The verse body is now selectable text, not a button — clicking it must
+    // not fire the new-entry action.
     fireEvent.click(screen.getByTestId("verse-1"));
+    expect(onVerseClick).not.toHaveBeenCalled();
+    // The verse-number control is the explicit new-entry trigger.
+    fireEvent.click(screen.getByTestId("verse-1-new-entry"));
     expect(onVerseClick).toHaveBeenCalledTimes(1);
   });
 });
