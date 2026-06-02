@@ -156,3 +156,35 @@ chapter-crossing selection is refused; render paints tail/full/head across the r
 coexisting with a mid-verse marker and respects the translation filter; multi-verse create POSTs all
 four coords (including the legitimate `char_end < char_start` cross-verse ordering); clicking any
 covered span removes the whole multi-verse highlight. typecheck + lint + 195 tests green.
+
+---
+
+## Cycle 5c-2 addendum — overlap `+N` stacking (render + resolution)
+
+**Status:** Implemented (2026-06-02). Render + resolution only; color-change/edit panel is 5c-3.
+
+5b's `buildVerseParts` already split a verse at every highlight edge and tagged each run with the
+full set of covering highlights, so arbitrary overlap (partial, nested, N-deep, adjacent,
+duplicate-span) already produced correct per-run covering sets. 5c-2 makes the stack deterministic
+and signals it:
+
+- **Top-color rule:** each run's covering set is sorted by `annotation.id` ascending (oldest→newest),
+  so the last element — the **most-recently-created** highlight — renders its color on top. (Ids are
+  monotonic from the DB; "newest wins" is deterministic regardless of fetch/list order.)
+- **`+N` indicator:** a run covered by K > 1 highlights renders a small badge showing `+{K-1}`
+  (highlights *beyond* the top). The badge is a non-`data-text-segment` element (zero-width in the
+  selection offset space, like note markers) and carries `data-highlight-id={top.id}`.
+- **Stacked-click resolution:** clicking a stacked run — its text span **or** its `+N` badge —
+  resolves to the **top (newest)** annotation (both carry `data-highlight-id={top.id}`), so the
+  5c-1 collapsed-click→Remove path removes that one. Reaching the annotations *underneath* a stack
+  is deferred to **5c-3** (the panel will enumerate a run's stacked annotations). Single-coverage
+  runs remove their own annotation directly (5c-1 unchanged). The abandoned `mix-blend-mode` idea is
+  not used (unreadable in dark mode — the NET reference dropped it too).
+
+**Tested** (pure-function, driving the algorithm): partial/nested/three-deep/adjacent/duplicate-span
+overlap produce the right runs and covering-id sets; an ordering discriminator passes spans in
+descending id and asserts ascending output (proves the sort, not input order). Component: the `+N`
+badge appears only on K>1 runs and shows `K-1`; the overlapped run shows the highest-id color; a
+stacked click resolves Remove to the top annotation while a single-coverage run removes its own;
+overlap respects the translation filter and coexists with an inline marker. typecheck + lint + 205
+tests green.

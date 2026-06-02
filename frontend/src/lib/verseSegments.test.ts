@@ -116,3 +116,76 @@ describe("buildVerseParts — highlights", () => {
     ]);
   });
 });
+
+describe("buildVerseParts — overlap (5c-2)", () => {
+  const T = "abcdefghijklmnopqrstuvwxyz"; // 26 chars; offsets index single letters
+
+  function span(start: number, end: number, id: number): HighlightSpan {
+    return { start, end, annotation: makeAnnotation({ id }) };
+  }
+
+  /** Text runs only, projected to {text, covering-ids} for compact assertions. */
+  function textRuns(parts: ReturnType<typeof buildVerseParts>) {
+    return parts
+      .filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+      .map((p) => ({ text: p.text, ids: p.highlights.map((a) => a.id) }));
+  }
+
+  it("partial overlap → three runs (A-only, A∩B, B-only) with the right covering sets", () => {
+    const parts = buildVerseParts(T, [], [span(0, 10, 1), span(5, 15, 2)]);
+    expect(textRuns(parts)).toEqual([
+      { text: "abcde", ids: [1] },
+      { text: "fghij", ids: [1, 2] },
+      { text: "klmno", ids: [2] },
+      { text: "pqrstuvwxyz", ids: [] },
+    ]);
+  });
+
+  it("fully nested → outer covers both flanks, inner run carries both", () => {
+    const parts = buildVerseParts(T, [], [span(0, 20, 1), span(5, 10, 2)]);
+    expect(textRuns(parts)).toEqual([
+      { text: "abcde", ids: [1] },
+      { text: "fghij", ids: [1, 2] },
+      { text: "klmnopqrst", ids: [1] },
+      { text: "uvwxyz", ids: [] },
+    ]);
+  });
+
+  it("three-deep overlap → coverage counts 1,2,3,2,1 along the runs", () => {
+    const parts = buildVerseParts(T, [], [span(0, 15, 1), span(3, 12, 2), span(6, 9, 3)]);
+    expect(textRuns(parts).map((r) => r.ids.length)).toEqual([1, 2, 3, 2, 1, 0]);
+    expect(textRuns(parts).map((r) => r.ids)).toEqual([
+      [1],
+      [1, 2],
+      [1, 2, 3],
+      [1, 2],
+      [1],
+      [],
+    ]);
+  });
+
+  it("adjacent (touching) but non-overlapping → no merged run, no run carries both", () => {
+    const runs = textRuns(buildVerseParts(T, [], [span(0, 5, 1), span(5, 10, 2)]));
+    expect(runs).toEqual([
+      { text: "abcde", ids: [1] },
+      { text: "fghij", ids: [2] },
+      { text: "klmnopqrstuvwxyz", ids: [] },
+    ]);
+    expect(runs.some((r) => r.ids.length > 1)).toBe(false);
+  });
+
+  it("identical-span duplicates → one run covered by both ids", () => {
+    const parts = buildVerseParts(T, [], [span(0, 5, 1), span(0, 5, 2)]);
+    expect(textRuns(parts)).toEqual([
+      { text: "abcde", ids: [1, 2] },
+      { text: "fghijklmnopqrstuvwxyz", ids: [] },
+    ]);
+  });
+
+  it("orders each run's covering stack oldest→newest by id regardless of input order", () => {
+    // Pass spans DESCENDING by id; the covered run must still come back ascending
+    // (proves the sort, not input order). All three cover [0,10].
+    const parts = buildVerseParts(T, [], [span(0, 10, 3), span(0, 10, 1), span(0, 10, 2)]);
+    expect(textRuns(parts)[0]).toEqual({ text: "abcdefghij", ids: [1, 2, 3] });
+  });
+});

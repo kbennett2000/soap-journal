@@ -50,9 +50,11 @@ function netMultiVerseChapter(): ChapterResponse {
   });
 }
 
-/** Concatenated text of every highlighted run within a verse element. */
+/** Concatenated text of every highlighted run within a verse element. The
+ * `[data-text-segment]` filter excludes the `+N` stack badge (which also carries
+ * data-highlight-id but is not part of the verse text). */
 function highlightedTextOf(verseEl: HTMLElement): string {
-  return Array.from(verseEl.querySelectorAll("[data-highlight-id]"))
+  return Array.from(verseEl.querySelectorAll("[data-text-segment][data-highlight-id]"))
     .map((s) => s.textContent)
     .join("");
 }
@@ -342,5 +344,92 @@ describe("ChapterContent — remove flow", () => {
 
     expect(onRemoveHighlight).toHaveBeenCalledTimes(1);
     expect(onRemoveHighlight).toHaveBeenCalledWith(71);
+  });
+});
+
+describe("ChapterContent — overlap +N (5c-2)", () => {
+  // Two NET highlights overlapping in John 3:16 (which also has a marker at
+  // char 3): id 1 yellow [0,12], id 2 green [6,20]. Union = "For God so loved the".
+  function overlapAnnotations(): Annotation[] {
+    return [
+      makeAnnotation({ id: 1, char_start: 0, char_end: 12, color: "yellow" }),
+      makeAnnotation({ id: 2, char_start: 6, char_end: 20, color: "green" }),
+    ];
+  }
+
+  it("shows the newest color on the overlapped run with a +N badge, coexisting with a marker", () => {
+    const { container } = renderContent(netChapterWithMarker(), {
+      annotations: overlapAnnotations(),
+    });
+    const verse16 = screen.getByTestId("verse-16");
+
+    // Union of both highlights, marker excluded from the highlighted text.
+    expect(highlightedTextOf(verse16)).toBe("For God so loved the");
+    expect(within(verse16).getByTestId("note-marker")).toBeInTheDocument();
+
+    // Exactly one overlapped run → one badge; N counts highlights beyond the top.
+    const badges = container.querySelectorAll('[data-testid="highlight-stack-badge"]');
+    expect(badges).toHaveLength(1);
+    expect(badges[0]).toHaveTextContent("+1");
+    expect(badges[0]?.getAttribute("data-highlight-id")).toBe("2"); // newest on top
+
+    // Newest (highest id) color shows on the overlapped run; the A-only run is yellow.
+    const greenRun = verse16.querySelector<HTMLElement>(
+      '[data-text-segment][data-highlight-id="2"]',
+    );
+    expect(greenRun?.style.backgroundColor).toBe("var(--hl-green)");
+    const yellowRun = verse16.querySelector<HTMLElement>(
+      '[data-text-segment][data-highlight-id="1"]',
+    );
+    expect(yellowRun?.style.backgroundColor).toBe("var(--hl-yellow)");
+  });
+
+  it("shows no badge where only one highlight covers the run", () => {
+    const { container } = renderContent(netChapterWithMarker(), {
+      annotations: [makeAnnotation({ id: 1, char_start: 0, char_end: 5 })],
+    });
+    expect(
+      container.querySelectorAll('[data-testid="highlight-stack-badge"]'),
+    ).toHaveLength(0);
+  });
+
+  it("resolves a stacked run to the top annotation; a single-coverage run removes its own", () => {
+    const onRemoveHighlight = vi.fn();
+    const { container } = renderContent(netChapterWithMarker(), {
+      annotations: overlapAnnotations(),
+      onRemoveHighlight,
+      resolveSelectionFn: () => null,
+    });
+
+    // Click the +N badge (a stacked run) → Remove takes the newest (id 2).
+    const badge = container.querySelector<HTMLElement>('[data-testid="highlight-stack-badge"]');
+    if (!badge) throw new Error("expected a stack badge");
+    fireEvent.mouseUp(badge);
+    fireEvent.click(
+      within(screen.getByTestId("highlight-popover")).getByRole("button", {
+        name: /remove highlight/i,
+      }),
+    );
+    expect(onRemoveHighlight).toHaveBeenLastCalledWith(2);
+
+    // Click a single-coverage (yellow, id 1) run → Remove takes id 1.
+    const yellowRun = screen
+      .getByTestId("verse-16")
+      .querySelector<HTMLElement>('[data-text-segment][data-highlight-id="1"]');
+    if (!yellowRun) throw new Error("expected a single-coverage run");
+    fireEvent.mouseUp(yellowRun);
+    fireEvent.click(
+      within(screen.getByTestId("highlight-popover")).getByRole("button", {
+        name: /remove highlight/i,
+      }),
+    );
+    expect(onRemoveHighlight).toHaveBeenLastCalledWith(1);
+  });
+
+  it("hides overlapping highlights made in a different translation", () => {
+    const { container } = renderContent(netChapterWithMarker(), {
+      annotations: overlapAnnotations().map((a) => ({ ...a, translation_code: "KJV" })),
+    });
+    expect(container.querySelectorAll("[data-highlight-id]")).toHaveLength(0);
   });
 });

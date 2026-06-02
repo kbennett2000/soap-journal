@@ -381,15 +381,34 @@ function VerseBody({ verse, highlightSpans, onNoteClick }: VerseBodyProps): JSX.
             </span>
           );
         }
+        // Overlap (5c-2): the newest highlight's color shows on top; a `+N`
+        // badge (N = highlights beyond the top) signals the stack. Both the run
+        // and the badge carry data-highlight-id={top.id}, so a click resolves to
+        // the top annotation via the article-level mouseup hit-test. The badge
+        // is NOT data-text-segment (zero-width in the offset space) and must NOT
+        // stopPropagation (the mouseup must reach the chapter handler).
+        const stacked = part.highlights.length > 1;
         return (
-          <span
-            key={`text-${i}`}
-            data-text-segment=""
-            data-highlight-id={top.id}
-            className="cursor-pointer rounded-sm"
-            style={{ backgroundColor: highlightVar(top.color) }}
-          >
-            {part.text}
+          <span key={`text-${i}`}>
+            <span
+              data-text-segment=""
+              data-highlight-id={top.id}
+              className="cursor-pointer rounded-sm"
+              style={{ backgroundColor: highlightVar(top.color) }}
+            >
+              {part.text}
+            </span>
+            {stacked && (
+              <button
+                type="button"
+                data-highlight-id={top.id}
+                data-testid="highlight-stack-badge"
+                aria-label={`${part.highlights.length} highlights here`}
+                className="mx-0.5 select-none rounded px-1 align-super font-sans text-[0.65em] font-medium text-slate-600 ring-1 ring-slate-300 dark:text-slate-300 dark:ring-slate-600"
+              >
+                +{part.highlights.length - 1}
+              </button>
+            )}
           </span>
         );
       })}

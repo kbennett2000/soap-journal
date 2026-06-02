@@ -20,7 +20,11 @@ import type { Annotation, FootnoteResponse } from "@/types/api";
 export interface VerseTextPart {
   type: "text";
   text: string;
-  /** Highlights covering this run (top-most last); empty when unhighlighted. */
+  /**
+   * Highlights covering this run, ordered oldest→newest by annotation `id`
+   * (top-most last); empty when unhighlighted. The last element is the
+   * most-recently-created highlight, whose color is rendered on top (5c-2).
+   */
   highlights: Annotation[];
 }
 
@@ -93,7 +97,11 @@ export function buildVerseParts(
     // Breakpoints include every highlight edge, so a segment [at, next) is
     // either fully inside a highlight or fully outside it — partial overlap is
     // impossible. Hence "contains" (start ≤ at && end ≥ next), not "overlaps".
-    const covering = spans.filter((s) => s.start <= at && s.end >= next);
+    // Order the covering stack oldest→newest by id so the newest renders on top
+    // deterministically, regardless of input order (5c-2).
+    const covering = spans
+      .filter((s) => s.start <= at && s.end >= next)
+      .sort((a, b) => a.annotation.id - b.annotation.id);
     parts.push({
       type: "text",
       text: text.slice(at, next),
