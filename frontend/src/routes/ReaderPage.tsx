@@ -16,7 +16,9 @@ import {
   useAnnotations,
   useCreateAnnotation,
   useDeleteAnnotation,
+  useUpdateAnnotation,
 } from "@/hooks/useAnnotations";
+import { AnnotationPanel } from "@/components/reader/AnnotationPanel";
 import {
   readFontSize,
   readLastLocation,
@@ -28,6 +30,7 @@ import {
   type ReaderLayout,
 } from "@/lib/storage";
 import type {
+  Annotation,
   BookSummary,
   ChapterPointer,
   ResolvedReference,
@@ -92,15 +95,31 @@ function ReaderInner({
   const translationDetailQuery = useTranslationDetail(translationCode);
   const chapterQuery = useChapter(translationCode, bookName, chapterNumber);
 
-  // Highlights for the primary pane (single-verse create/remove, ADR-0005 5b).
-  // Compare panes don't wire the highlight layer in 5b — that's a 5c concern.
+  // Highlights for the primary pane (ADR-0005). Compare panes don't wire the
+  // highlight layer — deferred beyond 5c.
   const annotationsQuery = useAnnotations({
     translation: translationCode,
     book: bookName,
     chapter: chapterNumber,
   });
   const createHighlight = useCreateAnnotation();
+  const updateHighlight = useUpdateAnnotation();
   const deleteHighlight = useDeleteAnnotation();
+
+  // The annotation edit panel (5c-3): the covering set for the clicked run plus
+  // the active annotation (defaults to the top). Hosted inline this cycle; the
+  // desktop side-panel / mobile bottom-sheet shell is 5c-4.
+  const [panel, setPanel] = useState<{ ids: number[]; activeId: number } | null>(null);
+
+  // Reset the edit panel when the chapter changes — the URL params drive
+  // ReaderInner without a remount, so close any open panel (render-phase
+  // pattern, lint-clean: no set-state-in-effect).
+  const chapterKey = `${translationCode}/${bookName}/${chapterNumber}`;
+  const [panelChapterKey, setPanelChapterKey] = useState(chapterKey);
+  if (chapterKey !== panelChapterKey) {
+    setPanelChapterKey(chapterKey);
+    setPanel(null);
+  }
 
   const [fontSize, setFontSize] = useState<FontSize>(() => readFontSize());
   const [layout, setLayout] = useState<ReaderLayout>(() => readLayout());
@@ -174,6 +193,20 @@ function ReaderInner({
     if (!pointer) return;
     navigateTo(translationCode, pointer.book_name, pointer.chapter_number);
   }
+
+  // Clicking a highlight (or +N badge) opens the edit panel for the full
+  // covering set; the active annotation defaults to the top (highest id, last in
+  // the id-ascending list — preserves 5c-2's "click → top" as the default).
+  const chapterAnnotations = annotationsQuery.data?.annotations ?? [];
+  function handleOpenAnnotations(ids: number[]): void {
+    if (ids.length === 0) return;
+    setPanel({ ids, activeId: ids[ids.length - 1]! });
+  }
+  const panelAnnotations: Annotation[] = panel
+    ? panel.ids
+        .map((id) => chapterAnnotations.find((a) => a.id === id))
+        .filter((a): a is Annotation => a !== undefined)
+    : [];
 
   function handleVerseClick(verse: VerseResponse, paneCode?: string): void {
     const code = paneCode ?? translationCode;
@@ -319,9 +352,30 @@ function ReaderInner({
               fontSize={fontSize}
               highlightRange={highlightRange}
               onVerseClick={(v) => handleVerseClick(v)}
-              annotations={annotationsQuery.data?.annotations ?? []}
+              annotations={chapterAnnotations}
               onCreateHighlight={(input) => createHighlight.mutate(input)}
-              onRemoveHighlight={(id) => deleteHighlight.mutate(id)}
+              onOpenAnnotations={handleOpenAnnotations}
+            />
+          )}
+
+          {panel && panelAnnotations.length > 0 && (
+            <AnnotationPanel
+              annotations={panelAnnotations}
+              activeId={panel.activeId}
+              onSelectActive={(id) =>
+                setPanel((p) => (p ? { ...p, activeId: id } : p))
+              }
+              onChangeColor={(id, color) =>
+                updateHighlight.mutate({ annotationId: id, body: { color } })
+              }
+              onSaveNote={(id, note) =>
+                updateHighlight.mutate({ annotationId: id, body: { note } })
+              }
+              onDelete={(id) => {
+                deleteHighlight.mutate(id);
+                setPanel(null);
+              }}
+              onClose={() => setPanel(null)}
             />
           )}
         </>

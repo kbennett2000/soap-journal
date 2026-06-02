@@ -50,14 +50,19 @@ interface ChapterContentProps {
   /** Highlights to render; filtered here to the chapter's translation_code. */
   annotations?: Annotation[];
   onCreateHighlight?: (input: AnnotationCreate) => void;
-  onRemoveHighlight?: (annotationId: number) => void;
+  /** Open the edit panel for the annotations covering a clicked run (5c-3). */
+  onOpenAnnotations?: (annotationIds: number[]) => void;
   /** Injectable selection reader for tests; defaults to the live one. */
   resolveSelectionFn?: () => VerseSelection | null;
 }
 
-type PopoverState =
-  | { mode: "create"; selection: VerseSelection; top: number; left: number }
-  | { mode: "remove"; annotation: Annotation; top: number; left: number };
+// The popover is only ever the create swatches now (5c-3 retired the remove
+// popover — existing highlights open the AnnotationPanel instead).
+interface PopoverState {
+  selection: VerseSelection;
+  top: number;
+  left: number;
+}
 
 export function ChapterContent({
   chapter,
@@ -67,7 +72,7 @@ export function ChapterContent({
   onVerseClick,
   annotations,
   onCreateHighlight,
-  onRemoveHighlight,
+  onOpenAnnotations,
   resolveSelectionFn = liveResolveSelection,
 }: ChapterContentProps): JSX.Element {
   // Group headings by the verse number they precede so renderers can
@@ -92,7 +97,7 @@ export function ChapterContent({
     (a) => a.translation_code === chapter.translation_code,
   );
   const highlightLayerEnabled =
-    onCreateHighlight !== undefined || onRemoveHighlight !== undefined;
+    onCreateHighlight !== undefined || onOpenAnnotations !== undefined;
 
   const [popover, setPopover] = useState<PopoverState | null>(null);
 
@@ -108,7 +113,6 @@ export function ChapterContent({
       // boundary, so any non-null selection here is in-chapter.
       if (onCreateHighlight) {
         setPopover({
-          mode: "create",
           selection,
           top: selection.rect.top,
           left: selection.rect.left,
@@ -118,15 +122,22 @@ export function ChapterContent({
       }
       return;
     }
-    // Collapsed click: a click on an existing highlight opens the remove popover.
+    // Collapsed click on an existing highlight (run or +N badge): open the edit
+    // panel for the FULL covering set (data-highlight-ids), so overlapped
+    // annotations underneath the top are reachable (5c-3).
     const target = event.target as HTMLElement;
     const hit = target.closest?.("[data-highlight-id]") as HTMLElement | null;
-    if (hit && onRemoveHighlight) {
-      const id = Number(hit.getAttribute("data-highlight-id"));
-      const annotation = chapterAnnotations.find((a) => a.id === id);
-      if (annotation) {
-        const rect = hit.getBoundingClientRect();
-        setPopover({ mode: "remove", annotation, top: rect.top, left: rect.left });
+    if (hit && onOpenAnnotations) {
+      const raw =
+        hit.getAttribute("data-highlight-ids") ??
+        hit.getAttribute("data-highlight-id") ??
+        "";
+      const ids = raw
+        .split(",")
+        .map((s) => Number(s))
+        .filter((n) => Number.isFinite(n) && n > 0);
+      if (ids.length > 0) {
+        onOpenAnnotations(ids);
         return;
       }
     }
@@ -140,7 +151,7 @@ export function ChapterContent({
   }
 
   function handlePickColor(color: HighlightColor): void {
-    if (popover?.mode !== "create" || !onCreateHighlight) return;
+    if (!popover || !onCreateHighlight) return;
     const sel = popover.selection;
     onCreateHighlight({
       translation_code: chapter.translation_code,
@@ -154,12 +165,6 @@ export function ChapterContent({
     });
     setPopover(null);
     clearLiveSelection();
-  }
-
-  function handleRemove(): void {
-    if (popover?.mode !== "remove" || !onRemoveHighlight) return;
-    onRemoveHighlight(popover.annotation.id);
-    setPopover(null);
   }
 
   return (
@@ -204,7 +209,6 @@ export function ChapterContent({
         <SelectionPopover
           popover={popover}
           onPick={handlePickColor}
-          onRemove={handleRemove}
           onCancel={() => setPopover(null)}
         />
       )}
@@ -382,17 +386,21 @@ function VerseBody({ verse, highlightSpans, onNoteClick }: VerseBodyProps): JSX.
           );
         }
         // Overlap (5c-2): the newest highlight's color shows on top; a `+N`
-        // badge (N = highlights beyond the top) signals the stack. Both the run
-        // and the badge carry data-highlight-id={top.id}, so a click resolves to
-        // the top annotation via the article-level mouseup hit-test. The badge
-        // is NOT data-text-segment (zero-width in the offset space) and must NOT
-        // stopPropagation (the mouseup must reach the chapter handler).
+        // badge (N = highlights beyond the top) signals the stack. The run and
+        // the badge carry data-highlight-id={top.id} (the fast-path/top) AND
+        // data-highlight-ids (the FULL covering set, id-ascending), so a click
+        // opens the panel for the whole stack — reaching the ones underneath
+        // (5c-3). The badge is NOT data-text-segment (zero-width in the offset
+        // space) and must NOT stopPropagation (the mouseup must reach the
+        // chapter handler).
         const stacked = part.highlights.length > 1;
+        const ids = part.highlights.map((a) => a.id).join(",");
         return (
           <span key={`text-${i}`}>
             <span
               data-text-segment=""
               data-highlight-id={top.id}
+              data-highlight-ids={ids}
               className="cursor-pointer rounded-sm"
               style={{ backgroundColor: highlightVar(top.color) }}
             >
@@ -402,6 +410,7 @@ function VerseBody({ verse, highlightSpans, onNoteClick }: VerseBodyProps): JSX.
               <button
                 type="button"
                 data-highlight-id={top.id}
+                data-highlight-ids={ids}
                 data-testid="highlight-stack-badge"
                 aria-label={`${part.highlights.length} highlights here`}
                 className="mx-0.5 select-none rounded px-1 align-super font-sans text-[0.65em] font-medium text-slate-600 ring-1 ring-slate-300 dark:text-slate-300 dark:ring-slate-600"
@@ -420,14 +429,12 @@ function VerseBody({ verse, highlightSpans, onNoteClick }: VerseBodyProps): JSX.
 interface SelectionPopoverProps {
   popover: PopoverState;
   onPick: (color: HighlightColor) => void;
-  onRemove: () => void;
   onCancel: () => void;
 }
 
 function SelectionPopover({
   popover,
   onPick,
-  onRemove,
   onCancel,
 }: SelectionPopoverProps): JSX.Element {
   // Escape dismisses the popover (keyboard parity with the Cancel button).
@@ -454,26 +461,16 @@ function SelectionPopover({
       onMouseDown={(e) => e.stopPropagation()}
       className="z-20 flex items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
     >
-      {popover.mode === "create" &&
-        HIGHLIGHT_COLORS.map((color) => (
-          <button
-            key={color}
-            type="button"
-            aria-label={`Highlight ${HIGHLIGHT_COLOR_LABELS[color]}`}
-            onClick={() => onPick(color)}
-            style={{ backgroundColor: highlightVar(color) }}
-            className="h-6 w-6 rounded-full border border-slate-300 transition-transform hover:scale-110 dark:border-slate-600"
-          />
-        ))}
-      {popover.mode === "remove" && (
+      {HIGHLIGHT_COLORS.map((color) => (
         <button
+          key={color}
           type="button"
-          onClick={onRemove}
-          className="rounded px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-900/30"
-        >
-          Remove highlight
-        </button>
-      )}
+          aria-label={`Highlight ${HIGHLIGHT_COLOR_LABELS[color]}`}
+          onClick={() => onPick(color)}
+          style={{ backgroundColor: highlightVar(color) }}
+          className="h-6 w-6 rounded-full border border-slate-300 transition-transform hover:scale-110 dark:border-slate-600"
+        />
+      ))}
       <button
         type="button"
         aria-label="Cancel"

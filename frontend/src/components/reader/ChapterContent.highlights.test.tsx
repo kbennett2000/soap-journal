@@ -280,22 +280,17 @@ describe("ChapterContent — create flow", () => {
   });
 });
 
-describe("ChapterContent — remove flow", () => {
-  it("clicking an existing highlight opens a Remove action that DELETEs it", () => {
-    const annotation: Annotation = makeAnnotation({
-      id: 42,
-      translation_code: "NET",
-      book: "John",
-      chapter: 3,
-      verse_start: 16,
-      verse_end: 16,
-      char_start: 0,
-      char_end: 5,
-    });
-    const onRemoveHighlight = vi.fn();
+// 5c-3 migrated the Remove popover to the AnnotationPanel: clicking a highlight
+// no longer opens a "Remove highlight" popover — it resolves the covering set and
+// asks the host (ReaderPage) to open the panel (where Delete lives). These tests
+// assert the RESOLUTION (onOpenAnnotations with the right ids); the full
+// click→panel→Delete→DELETE flow is in ReaderPage.annotations.test.tsx.
+describe("ChapterContent — open-panel resolution (5c-3)", () => {
+  it("clicking an existing highlight opens the panel for that annotation (no remove popover)", () => {
+    const onOpenAnnotations = vi.fn();
     const { container } = renderContent(netChapterWithMarker(), {
-      annotations: [annotation],
-      onRemoveHighlight,
+      annotations: [makeAnnotation({ id: 42, char_start: 0, char_end: 5 })],
+      onOpenAnnotations,
       // Collapsed click → no selection.
       resolveSelectionFn: () => null,
     });
@@ -304,46 +299,36 @@ describe("ChapterContent — remove flow", () => {
     if (!span) throw new Error("expected a rendered highlight span");
     fireEvent.mouseUp(span);
 
-    const popover = screen.getByTestId("highlight-popover");
-    fireEvent.click(within(popover).getByRole("button", { name: /remove highlight/i }));
-
-    expect(onRemoveHighlight).toHaveBeenCalledWith(42);
+    expect(onOpenAnnotations).toHaveBeenCalledWith([42]);
+    // The old Remove popover is gone.
     expect(screen.queryByTestId("highlight-popover")).not.toBeInTheDocument();
   });
 
-  it("removes a whole multi-verse highlight when any covered span is clicked", () => {
-    const annotation: Annotation = makeAnnotation({
-      id: 71,
-      translation_code: "NET",
-      book: "John",
-      chapter: 3,
-      verse_start: 16,
-      char_start: 8,
-      verse_end: 18,
-      char_end: 8,
-    });
-    const onRemoveHighlight = vi.fn();
+  it("clicking any covered span of a multi-verse highlight opens the panel for it", () => {
+    const onOpenAnnotations = vi.fn();
     renderContent(netMultiVerseChapter(), {
-      annotations: [annotation],
-      onRemoveHighlight,
+      annotations: [
+        makeAnnotation({
+          id: 71,
+          verse_start: 16,
+          char_start: 8,
+          verse_end: 18,
+          char_end: 8,
+        }),
+      ],
+      onOpenAnnotations,
       resolveSelectionFn: () => null,
     });
 
-    // Click a covered span in the MIDDLE verse — still removes the whole row.
+    // A covered span in the MIDDLE verse still resolves to the whole annotation.
     const span = screen
       .getByTestId("verse-17")
       .querySelector<HTMLElement>('[data-highlight-id="71"]');
     if (!span) throw new Error("expected a covered span in verse 17");
     fireEvent.mouseUp(span);
 
-    fireEvent.click(
-      within(screen.getByTestId("highlight-popover")).getByRole("button", {
-        name: /remove highlight/i,
-      }),
-    );
-
-    expect(onRemoveHighlight).toHaveBeenCalledTimes(1);
-    expect(onRemoveHighlight).toHaveBeenCalledWith(71);
+    expect(onOpenAnnotations).toHaveBeenCalledTimes(1);
+    expect(onOpenAnnotations).toHaveBeenCalledWith([71]);
   });
 });
 
@@ -393,37 +378,28 @@ describe("ChapterContent — overlap +N (5c-2)", () => {
     ).toHaveLength(0);
   });
 
-  it("resolves a stacked run to the top annotation; a single-coverage run removes its own", () => {
-    const onRemoveHighlight = vi.fn();
+  it("opens the panel with the FULL covering set from a stacked run; single-coverage resolves to one", () => {
+    const onOpenAnnotations = vi.fn();
     const { container } = renderContent(netChapterWithMarker(), {
       annotations: overlapAnnotations(),
-      onRemoveHighlight,
+      onOpenAnnotations,
       resolveSelectionFn: () => null,
     });
 
-    // Click the +N badge (a stacked run) → Remove takes the newest (id 2).
+    // Click the +N badge (a stacked run) → the whole stack, id-ascending. The
+    // panel will default active to the top (last); the chooser reaches the rest.
     const badge = container.querySelector<HTMLElement>('[data-testid="highlight-stack-badge"]');
     if (!badge) throw new Error("expected a stack badge");
     fireEvent.mouseUp(badge);
-    fireEvent.click(
-      within(screen.getByTestId("highlight-popover")).getByRole("button", {
-        name: /remove highlight/i,
-      }),
-    );
-    expect(onRemoveHighlight).toHaveBeenLastCalledWith(2);
+    expect(onOpenAnnotations).toHaveBeenLastCalledWith([1, 2]);
 
-    // Click a single-coverage (yellow, id 1) run → Remove takes id 1.
+    // Click a single-coverage (id 1 only) run → just that one.
     const yellowRun = screen
       .getByTestId("verse-16")
       .querySelector<HTMLElement>('[data-text-segment][data-highlight-id="1"]');
     if (!yellowRun) throw new Error("expected a single-coverage run");
     fireEvent.mouseUp(yellowRun);
-    fireEvent.click(
-      within(screen.getByTestId("highlight-popover")).getByRole("button", {
-        name: /remove highlight/i,
-      }),
-    );
-    expect(onRemoveHighlight).toHaveBeenLastCalledWith(1);
+    expect(onOpenAnnotations).toHaveBeenLastCalledWith([1]);
   });
 
   it("hides overlapping highlights made in a different translation", () => {

@@ -188,3 +188,47 @@ badge appears only on K>1 runs and shows `K-1`; the overlapped run shows the hig
 stacked click resolves Remove to the top annotation while a single-coverage run removes its own;
 overlap respects the translation filter and coexists with an inline marker. typecheck + lint + 205
 tests green.
+
+---
+
+## Cycle 5c-3 addendum — the annotation panel (color / note / delete + reaching stacks)
+
+**Status:** Implemented (2026-06-02). Desktop-first, hosted inline; the responsive side-panel /
+bottom-sheet shell and converging NoteView are **5c-4**.
+
+The annotation **panel is now the existing-highlight surface** — the small Remove popover is
+**retired**. Clicking a highlight (or its `+N` badge) resolves the **full covering set** and opens
+`AnnotationPanel` (steps 1–2) where color, note, and delete live.
+
+- **PATCH client surface (step 1):** `"PATCH"` added to `Method`; `AnnotationUpdate {color?; note?:
+  string|null}`; `updateAnnotation` + `useUpdateAnnotation` (refetch on success, mirroring
+  create/delete); MSW PATCH handler.
+- **Panel (step 2):** immediate color PATCH on swatch click; plain-text note, dirty-tracked,
+  explicit Save (empty/whitespace → `null` clears); Delete confirms (ConfirmDialog) only when a note
+  exists, else immediate. A **stack chooser** (newest-first) appears when >1 annotation covers the
+  run, so the ones underneath an overlap are reachable.
+- **Resolution + wiring (step 3):** each highlighted run and the `+N` badge carry
+  `data-highlight-ids` (the full covering set, id-ascending) alongside `data-highlight-id` (the
+  top/fast-path). A collapsed click parses that set and calls `onOpenAnnotations(ids)`; ReaderPage
+  hosts the panel (primary pane only), defaulting active to the **top** (last id) — so 5c-2's
+  "click → top" remains the default, and the chooser reaches the rest. Color/note → update mutation,
+  Delete → delete mutation + close. Panel state resets on chapter change (render-phase pattern).
+- **Stacking is id-based, not color-based:** a color change never reorders the stack — only the
+  displayed top color changes if the top annotation is recolored.
+- Refetch (not optimistic); mutation **error feedback is deferred to 5c-6**. NoteView untouched.
+
+**Remove-popover test migration (audited).** The Remove popover is gone, so its three tests changed
+**by design** (not regressions). At the ChapterContent level they now assert *resolution*; the
+delete behavior they used to prove is re-proven end-to-end through the panel in
+`ReaderPage.annotations.test.tsx` (stateful MSW):
+- *"clicking an existing highlight opens a Remove action that DELETEs it"* (5b) → *"…opens the panel
+  for that annotation"* — was: click span → popover → "Remove highlight" → `onRemoveHighlight(42)`;
+  now: click span → `onOpenAnnotations([42])`, no popover.
+- *"removes a whole multi-verse highlight when any covered span is clicked"* (5c-1) → *"clicking any
+  covered span … opens the panel for it"* — was: `onRemoveHighlight(71)`; now: `onOpenAnnotations([71])`.
+- *"resolves a stacked run to the top … single-coverage removes its own"* (5c-2) → *"opens the panel
+  with the FULL covering set …"* — was: badge → Remove → `onRemoveHighlight(2)`, run → `(1)`; now:
+  badge → `onOpenAnnotations([1,2])`, run → `onOpenAnnotations([1])`.
+- New end-to-end (panel) coverage: single-verse delete; **multi-verse delete** from a covered span;
+  **stacked delete of the one underneath** via the chooser; color PATCH re-render; confirm-if-note
+  delete. typecheck + lint + 222 tests green.
