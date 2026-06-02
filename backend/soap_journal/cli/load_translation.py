@@ -166,7 +166,14 @@ async def load_canonical_translation(
     """
     await _delete_existing_translation(db, payload.code)
     await _insert_translation(db, payload)
+    return translation_counts(payload)
 
+
+def translation_counts(payload: CanonicalTranslation) -> tuple[int, int, int]:
+    """Count (books, chapters, verses) in a canonical payload.
+
+    Shared by the loader and validator so both report the same numbers.
+    """
     books = len(payload.books)
     chapters = sum(len(b.chapters) for b in payload.books)
     verses = sum(len(c.verses) for b in payload.books for c in b.chapters)

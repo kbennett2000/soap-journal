@@ -129,8 +129,15 @@ it inside the running container. `./bibles` is bind-mounted to
 docker compose exec soap-journal \
   python -m soap_journal.parsers.esv /app/bibles/esv.pdf --out /tmp/esv.json
 docker compose exec soap-journal \
+  python -m soap_journal.cli validate-translation /tmp/esv.json
+docker compose exec soap-journal \
   python -m soap_journal.cli load-translation /tmp/esv.json
 ```
+
+The `validate-translation` step is optional but recommended: it checks the
+parser's output against the canonical schema and reports the book/chapter/verse
+counts without touching the database, so you can confirm a translation is sound
+before loading it (or before transferring the JSON to another device).
 
 Step-by-step instructions for each of NKJV, ESV, and NLT — including the
 source format each expects and per-translation caveats — are in

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `validate-translation` CLI subcommand
+  (`python -m soap_journal.cli validate-translation <path.json>`) that checks a
+  parser's canonical JSON against the schema and reports book/chapter/verse
+  counts without touching the database — for vetting a translation off-device
+  and as the reference implementation for a future TypeScript validator.
+
 - NKJV parser (`python -m soap_journal.parsers.nkjv`) for users who have
   their own New King James Version PDF.
 - KJV parser (`python -m soap_journal.parsers.kjv`) with section heading
