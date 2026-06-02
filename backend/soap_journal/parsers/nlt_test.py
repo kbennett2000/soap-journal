@@ -9,7 +9,6 @@ from unittest.mock import patch
 import pytest
 
 from soap_journal.parsers.nlt import (
-    NLT_CODE,
     NltParseError,
     _parse_numbered_line,
     build_canonical_translation,
@@ -32,10 +31,7 @@ def _make_nlt_text(*sections: str, toc: bool = True) -> str:
     markers) to exercise TOC discrimination.
     """
     toc_text = (
-        "Genesis\nExodus\nLeviticus\nNumbers\nDeuteronomy\n"
-        "Psalms\nRevelation\n\n"
-        if toc
-        else ""
+        "Genesis\nExodus\nLeviticus\nNumbers\nDeuteronomy\nPsalms\nRevelation\n\n" if toc else ""
     )
     return toc_text + "\n".join(sections) + "\n"
 
@@ -145,11 +141,7 @@ def test_psalms_parsing() -> None:
 
 
 def test_toc_discrimination() -> None:
-    text = (
-        "Genesis\nExodus\nLeviticus\n\n"
-        "Genesis\n"
-        "1In the beginning God created the heavens.\n"
-    )
+    text = "Genesis\nExodus\nLeviticus\n\nGenesis\n1In the beginning God created the heavens.\n"
     books, _ = parse_lines(text)
     assert "Genesis" in books
     assert len(books) == 1
@@ -213,7 +205,7 @@ def test_quote_style_verse_marker() -> None:
     """Verse text starting with an opening quote is parsed correctly."""
     text = _make_nlt_text(
         "Exodus",
-        '1Now these are the names.',
+        "1Now these are the names.",
         '2"Now you will see what I will do to Pharaoh.',
     )
     books, _ = parse_lines(text)
@@ -222,11 +214,7 @@ def test_quote_style_verse_marker() -> None:
 
 
 def test_formfeed_in_verse() -> None:
-    text = (
-        "Genesis\n"
-        "1In the beginning God\f"
-        "created the heavens and the earth.\n"
-    )
+    text = "Genesis\n1In the beginning God\fcreated the heavens and the earth.\n"
     books, _ = parse_lines(text)
     assert books["Genesis"][1][0] == (
         1,
@@ -297,9 +285,7 @@ def test_build_rejects_missing_book() -> None:
 
 
 def test_cli_returns_error_on_missing_file(tmp_path: Path) -> None:
-    result = main(
-        [str(tmp_path / "nope.pdf"), "--out", str(tmp_path / "out.json")]
-    )
+    result = main([str(tmp_path / "nope.pdf"), "--out", str(tmp_path / "out.json")])
     assert result == 2
 
 
@@ -308,18 +294,14 @@ def test_cli_returns_error_on_pdftotext_not_found(tmp_path: Path) -> None:
         "soap_journal.parsers.nlt._read_pdf",
         side_effect=FileNotFoundError("pdftotext"),
     ):
-        result = main(
-            [str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")]
-        )
+        result = main([str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")])
     assert result == 2
 
 
 def test_cli_returns_error_on_partial_source(tmp_path: Path) -> None:
     partial_text = "Genesis\n1In the beginning.\n"
     with patch("soap_journal.parsers.nlt._read_pdf", return_value=partial_text):
-        result = main(
-            [str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")]
-        )
+        result = main([str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")])
     assert result == 1
 
 
@@ -350,14 +332,10 @@ class TestRealNltSource:
 
     def test_verse_count_in_range(self, translation: tuple) -> None:
         t, _ = translation
-        verses = sum(
-            len(c.verses) for b in t.books for c in b.chapters
-        )
+        verses = sum(len(c.verses) for b in t.books for c in b.chapters)
         assert 30900 <= verses <= 31200
 
-    def _get_verse(
-        self, translation: tuple, book: str, ch: int, v: int
-    ) -> str:
+    def _get_verse(self, translation: tuple, book: str, ch: int, v: int) -> str:
         t, _ = translation
         for b in t.books:
             if b.name == book:
@@ -421,16 +399,12 @@ class TestRealNltSource:
 
     def test_no_headings(self, translation: tuple) -> None:
         t, _ = translation
-        total = sum(
-            len(c.headings) for b in t.books for c in b.chapters
-        )
+        total = sum(len(c.headings) for b in t.books for c in b.chapters)
         assert total == 0
 
     def test_no_footnotes(self, translation: tuple) -> None:
         t, _ = translation
-        total = sum(
-            len(c.footnotes) for b in t.books for c in b.chapters
-        )
+        total = sum(len(c.footnotes) for b in t.books for c in b.chapters)
         assert total == 0
 
     def test_cli_writes_json(self, translation: tuple, tmp_path: Path) -> None:

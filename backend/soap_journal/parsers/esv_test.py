@@ -9,13 +9,12 @@ from unittest.mock import patch
 import pytest
 
 from soap_journal.parsers.esv import (
-    ESV_CODE,
     EsvParseError,
     _extract_footnote,
     build_canonical_translation,
     main,
-    parse_lines,
     parse_esv_source,
+    parse_lines,
 )
 
 _HERE = Path(__file__).parent
@@ -110,9 +109,7 @@ def test_verse_text_multiline() -> None:
         "Second line of verse.",
     )
     books, _, _, _ = parse_lines(text)
-    assert books["Genesis"][1] == [
-        (1, "First line of verse. Second line of verse.")
-    ]
+    assert books["Genesis"][1] == [(1, "First line of verse. Second line of verse.")]
 
 
 def test_standalone_pericope() -> None:
@@ -238,9 +235,7 @@ def test_cli_returns_error_on_invalid_pdf(tmp_path: Path) -> None:
 def test_cli_returns_error_on_partial_source(tmp_path: Path) -> None:
     partial_text = "1.1. Chapter 1\n1 \nIn the beginning.\n"
     with patch("soap_journal.parsers.esv._read_pdf", return_value=partial_text):
-        result = main(
-            [str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")]
-        )
+        result = main([str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")])
     assert result == 1
 
 
@@ -271,9 +266,7 @@ class TestRealEsvSource:
 
     def test_verse_count_in_range(self, translation: tuple) -> None:
         t, _ = translation
-        verses = sum(
-            len(c.verses) for b in t.books for c in b.chapters
-        )
+        verses = sum(len(c.verses) for b in t.books for c in b.chapters)
         assert 31000 <= verses <= 31200
 
     def _get_verse(self, translation: tuple, book: str, ch: int, v: int) -> str:
@@ -306,16 +299,12 @@ class TestRealEsvSource:
 
     def test_has_headings(self, translation: tuple) -> None:
         t, _ = translation
-        total = sum(
-            len(c.headings) for b in t.books for c in b.chapters
-        )
+        total = sum(len(c.headings) for b in t.books for c in b.chapters)
         assert total > 500
 
     def test_has_footnotes(self, translation: tuple) -> None:
         t, _ = translation
-        total = sum(
-            len(c.footnotes) for b in t.books for c in b.chapters
-        )
+        total = sum(len(c.footnotes) for b in t.books for c in b.chapters)
         assert total > 0
 
     def test_song_of_solomon_canonical_name(self, translation: tuple) -> None:

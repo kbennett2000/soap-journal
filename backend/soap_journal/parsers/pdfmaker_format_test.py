@@ -52,9 +52,7 @@ def test_split_verses_single_verse() -> None:
 
 
 def test_split_verses_multiple_inline() -> None:
-    result = split_verses(
-        "1 First verse text 2 Second verse 3 Third verse"
-    )
+    result = split_verses("1 First verse text 2 Second verse 3 Third verse")
     assert result is not None
     assert len(result) == 3
     assert result[0] == (1, "First verse text")
@@ -166,16 +164,11 @@ def test_parse_lines_continuation_lines() -> None:
         "and the earth.",
     )
     books, _, _ = parse_lines(text, _TEST_FOOTER)
-    assert books["Genesis"][1] == [
-        (1, "In the beginning God created the heaven and the earth.")
-    ]
+    assert books["Genesis"][1] == [(1, "In the beginning God created the heaven and the earth.")]
 
 
 def test_parse_lines_cross_page_break() -> None:
-    text = (
-        "Holy Bible\nTest\n\n"
-        "Genesis 1\n1 In the beginning\fGod created.\n"
-    )
+    text = "Holy Bible\nTest\n\nGenesis 1\n1 In the beginning\fGod created.\n"
     books, _, _ = parse_lines(text, _TEST_FOOTER)
     assert "Genesis" in books
 
@@ -321,9 +314,7 @@ def test_cli_returns_error_on_partial_source(tmp_path: Path) -> None:
     partial_text = "Genesis 1\n1 In the beginning.\n"
     main = make_cli_main(_TEST_CONFIG)
     with patch("soap_journal.parsers.pdfmaker_format.read_pdf", return_value=partial_text):
-        result = main(
-            [str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")]
-        )
+        result = main([str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")])
     assert result == 1
 
 
@@ -362,9 +353,7 @@ class TestRealPdfMakerSources:
 
     def test_verse_count_in_range(self, parsed: tuple) -> None:
         t, _, cfg = parsed
-        verses = sum(
-            len(c.verses) for b in t.books for c in b.chapters
-        )
+        verses = sum(len(c.verses) for b in t.books for c in b.chapters)
         # JPS (Weymouth NT) has extra verse splits; most others ~31,102
         upper = 31800 if cfg.code == "JPS" else 31200
         assert 31000 <= verses <= upper

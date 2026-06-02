@@ -9,17 +9,13 @@ from unittest.mock import patch
 import pytest
 
 from soap_journal.parsers.kjv import (
-    KJV_CODE,
-    KJV_COPYRIGHT,
-    KJV_LANGUAGE,
-    KJV_NAME,
     KjvParseError,
     _is_likely_heading,
     _split_verses,
     build_canonical_translation,
     main,
-    parse_lines,
     parse_kjv_source,
+    parse_lines,
 )
 
 _HERE = Path(__file__).parent
@@ -61,9 +57,7 @@ def test_split_verses_multiple_inline() -> None:
 
 
 def test_split_verses_continuation_prefix() -> None:
-    result = _split_verses(
-        "and darkness was upon the deep. 3 And God said, Let there be light."
-    )
+    result = _split_verses("and darkness was upon the deep. 3 And God said, Let there be light.")
     assert result is not None
     assert result[0] == (0, "and darkness was upon the deep.")
     assert result[1] == (3, "And God said, Let there be light.")
@@ -94,9 +88,7 @@ def test_split_verses_bracket_start() -> None:
 
 
 def test_split_verses_paren_start() -> None:
-    result = _split_verses(
-        "27 (For all these abominations have the men of the land done.)"
-    )
+    result = _split_verses("27 (For all these abominations have the men of the land done.)")
     assert result is not None
     assert result[0][0] == 27
     assert result[0][1].startswith("(For all these")
@@ -163,12 +155,8 @@ def test_parse_lines_multi_chapter() -> None:
     )
     books, _, _ = parse_lines(text)
     assert sorted(books["Genesis"].keys()) == [1, 2]
-    assert books["Genesis"][1] == [
-        (1, "In the beginning God created the heaven.")
-    ]
-    assert books["Genesis"][2] == [
-        (1, "Thus the heavens were finished.")
-    ]
+    assert books["Genesis"][1] == [(1, "In the beginning God created the heaven.")]
+    assert books["Genesis"][2] == [(1, "Thus the heavens were finished.")]
 
 
 def test_parse_lines_continuation_lines() -> None:
@@ -303,9 +291,7 @@ def test_parse_lines_narrow_no_break_space() -> None:
     """The raw PDF format uses U+202F before verse text."""
     text = "Genesis 1\n1\n In the beginning God created the heaven.\n"
     books, _, _ = parse_lines(text)
-    assert books["Genesis"][1] == [
-        (1, "In the beginning God created the heaven.")
-    ]
+    assert books["Genesis"][1] == [(1, "In the beginning God created the heaven.")]
 
 
 # ---- build_canonical_translation --------------------------------------------
@@ -325,23 +311,71 @@ def test_build_includes_headings() -> None:
     headings_data = {}
     for spec in ALL_BOOKS:
         expected_chapters = {
-            "Genesis": 50, "Exodus": 40, "Leviticus": 27, "Numbers": 36,
-            "Deuteronomy": 34, "Joshua": 24, "Judges": 21, "Ruth": 4,
-            "1 Samuel": 31, "2 Samuel": 24, "1 Kings": 22, "2 Kings": 25,
-            "1 Chronicles": 29, "2 Chronicles": 36, "Ezra": 10,
-            "Nehemiah": 13, "Esther": 10, "Job": 42, "Psalms": 150,
-            "Proverbs": 31, "Ecclesiastes": 12, "Song of Solomon": 8,
-            "Isaiah": 66, "Jeremiah": 52, "Lamentations": 5, "Ezekiel": 48,
-            "Daniel": 12, "Hosea": 14, "Joel": 3, "Amos": 9, "Obadiah": 1,
-            "Jonah": 4, "Micah": 7, "Nahum": 3, "Habakkuk": 3,
-            "Zephaniah": 3, "Haggai": 2, "Zechariah": 14, "Malachi": 4,
-            "Matthew": 28, "Mark": 16, "Luke": 24, "John": 21, "Acts": 28,
-            "Romans": 16, "1 Corinthians": 16, "2 Corinthians": 13,
-            "Galatians": 6, "Ephesians": 6, "Philippians": 4,
-            "Colossians": 4, "1 Thessalonians": 5, "2 Thessalonians": 3,
-            "1 Timothy": 6, "2 Timothy": 4, "Titus": 3, "Philemon": 1,
-            "Hebrews": 13, "James": 5, "1 Peter": 5, "2 Peter": 3,
-            "1 John": 5, "2 John": 1, "3 John": 1, "Jude": 1,
+            "Genesis": 50,
+            "Exodus": 40,
+            "Leviticus": 27,
+            "Numbers": 36,
+            "Deuteronomy": 34,
+            "Joshua": 24,
+            "Judges": 21,
+            "Ruth": 4,
+            "1 Samuel": 31,
+            "2 Samuel": 24,
+            "1 Kings": 22,
+            "2 Kings": 25,
+            "1 Chronicles": 29,
+            "2 Chronicles": 36,
+            "Ezra": 10,
+            "Nehemiah": 13,
+            "Esther": 10,
+            "Job": 42,
+            "Psalms": 150,
+            "Proverbs": 31,
+            "Ecclesiastes": 12,
+            "Song of Solomon": 8,
+            "Isaiah": 66,
+            "Jeremiah": 52,
+            "Lamentations": 5,
+            "Ezekiel": 48,
+            "Daniel": 12,
+            "Hosea": 14,
+            "Joel": 3,
+            "Amos": 9,
+            "Obadiah": 1,
+            "Jonah": 4,
+            "Micah": 7,
+            "Nahum": 3,
+            "Habakkuk": 3,
+            "Zephaniah": 3,
+            "Haggai": 2,
+            "Zechariah": 14,
+            "Malachi": 4,
+            "Matthew": 28,
+            "Mark": 16,
+            "Luke": 24,
+            "John": 21,
+            "Acts": 28,
+            "Romans": 16,
+            "1 Corinthians": 16,
+            "2 Corinthians": 13,
+            "Galatians": 6,
+            "Ephesians": 6,
+            "Philippians": 4,
+            "Colossians": 4,
+            "1 Thessalonians": 5,
+            "2 Thessalonians": 3,
+            "1 Timothy": 6,
+            "2 Timothy": 4,
+            "Titus": 3,
+            "Philemon": 1,
+            "Hebrews": 13,
+            "James": 5,
+            "1 Peter": 5,
+            "2 Peter": 3,
+            "1 John": 5,
+            "2 John": 1,
+            "3 John": 1,
+            "Jude": 1,
             "Revelation": 22,
         }
         ch_count = expected_chapters[spec.name]
@@ -378,13 +412,9 @@ def test_cli_returns_error_on_invalid_pdf(tmp_path: Path) -> None:
 
 
 def test_cli_returns_error_on_partial_source(tmp_path: Path) -> None:
-    partial_text = (
-        "Genesis 1\n1 In the beginning God created the heaven.\n"
-    )
+    partial_text = "Genesis 1\n1 In the beginning God created the heaven.\n"
     with patch("soap_journal.parsers.pdfmaker_format.read_pdf", return_value=partial_text):
-        result = main(
-            [str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")]
-        )
+        result = main([str(tmp_path / "fake.pdf"), "--out", str(tmp_path / "out.json")])
     assert result == 1
 
 
@@ -415,9 +445,7 @@ class TestRealKjvSource:
 
     def test_31102_verses(self, translation: tuple) -> None:
         t, _ = translation
-        verses = sum(
-            len(c.verses) for b in t.books for c in b.chapters
-        )
+        verses = sum(len(c.verses) for b in t.books for c in b.chapters)
         assert verses == 31102
 
     def _get_verse(self, translation: tuple, book: str, ch: int, v: int) -> str:
@@ -450,8 +478,7 @@ class TestRealKjvSource:
 
     def test_spot_check_matt_5_3(self, translation: tuple) -> None:
         assert self._get_verse(translation, "Matthew", 5, 3) == (
-            "Blessed [are] the poor in spirit: "
-            "for theirs is the kingdom of heaven."
+            "Blessed [are] the poor in spirit: for theirs is the kingdom of heaven."
         )
 
     def test_spot_check_rev_22_21(self, translation: tuple) -> None:

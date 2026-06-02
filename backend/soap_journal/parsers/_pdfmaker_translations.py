@@ -51,9 +51,7 @@ PDFMAKER_CONFIGS: dict[str, PdfMakerTranslationConfig] = {
         code="DRB",
         name="Douay-Rheims Bible",
         language="en",
-        copyright=(
-            "Douay-Rheims Bible, Challoner Revision. Public domain."
-        ),
+        copyright=("Douay-Rheims Bible, Challoner Revision. Public domain."),
         footer_marker="DRB  [Online]",
     ),
     "ERV": PdfMakerTranslationConfig(
@@ -68,8 +66,7 @@ PDFMAKER_CONFIGS: dict[str, PdfMakerTranslationConfig] = {
         name="JPS Tanakh / Weymouth NT",
         language="en",
         copyright=(
-            "JPS Tanakh (1917) and Weymouth New Testament (1903). "
-            "Both are in the public domain."
+            "JPS Tanakh (1917) and Weymouth New Testament (1903). Both are in the public domain."
         ),
         footer_marker="JPS  [Online]",
     ),

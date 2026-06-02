@@ -62,9 +62,7 @@ _CROSS_REF_RE = re.compile(r"^\(.*\d+:\d+.*\)$")
 
 _SAYING_RE = re.compile(r"^Saying\s+\d+$")
 
-_TITLE_CASE_SMALL = frozenset(
-    "a an the of in for and to is with by on at or nor but not".split()
-)
+_TITLE_CASE_SMALL = frozenset("a an the of in for and to is with by on at or nor but not".split())
 
 
 def read_pdf(path: Path) -> str:
@@ -144,9 +142,7 @@ def is_likely_heading(line: str, prev_text: str) -> bool:
     if len(words) > 12:
         return False
 
-    all_title = all(
-        w[0].isupper() or w.lower() in _TITLE_CASE_SMALL for w in words if w
-    )
+    all_title = all(w[0].isupper() or w.lower() in _TITLE_CASE_SMALL for w in words if w)
     if not all_title:
         return False
 
@@ -156,9 +152,7 @@ def is_likely_heading(line: str, prev_text: str) -> bool:
     return True
 
 
-def parse_lines(
-    text: str, footer_marker: str
-) -> tuple[BooksData, HeadingsData, list[str]]:
+def parse_lines(text: str, footer_marker: str) -> tuple[BooksData, HeadingsData, list[str]]:
     """Line-level parse of preprocessed PDFMaker-format text.
 
     Returns ``(books_data, headings_data, rename_notices)``.
@@ -305,9 +299,7 @@ def build_canonical_translation(
                     text = "[verse not included in this translation]"
                 canon_verses.append(CanonicalVerse(number=v, text=text))
 
-            chapter_headings_raw = headings_data.get(spec.name, {}).get(
-                chapter_number, []
-            )
+            chapter_headings_raw = headings_data.get(spec.name, {}).get(chapter_number, [])
             headings = [
                 CanonicalHeading(before_verse=bv, text=t)
                 for bv, t in chapter_headings_raw
@@ -347,13 +339,9 @@ def parse_pdfmaker_source(
     return build_canonical_translation(books_data, headings_data, config), renames
 
 
-def write_canonical_json(
-    translation: CanonicalTranslation, out_path: Path
-) -> None:
+def write_canonical_json(translation: CanonicalTranslation, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        translation.model_dump_json(indent=2), encoding="utf-8"
-    )
+    out_path.write_text(translation.model_dump_json(indent=2), encoding="utf-8")
 
 
 def make_cli_main(
@@ -366,9 +354,7 @@ def make_cli_main(
             prog=f"python -m soap_journal.parsers.{config.code.lower()}",
             description=f"Parse a {config.name} PDF into canonical Bible JSON.",
         )
-        parser.add_argument(
-            "source", type=Path, help=f"Path to the {config.code} PDF"
-        )
+        parser.add_argument("source", type=Path, help=f"Path to the {config.code} PDF")
         parser.add_argument(
             "--out",
             type=Path,
@@ -402,9 +388,7 @@ def make_cli_main(
         for notice in renames:
             print(f"book rename: {notice}")
         chapters = sum(len(b.chapters) for b in translation.books)
-        verses = sum(
-            len(c.verses) for b in translation.books for c in b.chapters
-        )
+        verses = sum(len(c.verses) for b in translation.books for c in b.chapters)
         print(
             f"Parsed {translation.code}: {len(translation.books)} books, "
             f"{chapters} chapters, {verses} verses -> {args.out}"

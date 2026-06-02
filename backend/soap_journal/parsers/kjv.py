@@ -39,13 +39,25 @@ from soap_journal.parsers.pdfmaker_format import (
     BooksData,
     HeadingsData,
     PdfMakerParseError,
-    build_canonical_translation as _build_impl,
-    is_likely_heading as _is_likely_heading,  # noqa: F401 — re-exported for tests
     make_cli_main,
-    parse_lines as _parse_lines_impl,
     parse_pdfmaker_source,
+)
+from soap_journal.parsers.pdfmaker_format import (
+    build_canonical_translation as _build_impl,
+)
+from soap_journal.parsers.pdfmaker_format import (
+    is_likely_heading as _is_likely_heading,  # noqa: F401 — re-exported for tests
+)
+from soap_journal.parsers.pdfmaker_format import (
+    parse_lines as _parse_lines_impl,
+)
+from soap_journal.parsers.pdfmaker_format import (
     read_pdf as _read_pdf,  # noqa: F401 — re-exported for tests
+)
+from soap_journal.parsers.pdfmaker_format import (
     split_verses as _split_verses,  # noqa: F401 — re-exported for tests
+)
+from soap_journal.parsers.pdfmaker_format import (
     write_canonical_json as _write_canonical_json,  # noqa: F401 — re-exported for tests
 )
 from soap_journal.parsers.schema import CanonicalTranslation

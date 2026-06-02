@@ -289,11 +289,7 @@ def parse_lines(
         # 5. Multi-line pericope start: "(Abraham and the Covenant of"
         #    Only buffer when before the first verse in a chapter to avoid
         #    eating verse text that starts with parenthetical content.
-        if (
-            stripped.startswith("(")
-            and ")" not in stripped
-            and current_verse == 0
-        ):
+        if stripped.startswith("(") and ")" not in stripped and current_verse == 0:
             pericope_buffer = stripped
             pericope_verse = 0
             continue
@@ -378,28 +374,18 @@ def build_canonical_translation(
         for chapter_number in sorted(chapters_dict.keys()):
             verses = sorted(chapters_dict[chapter_number], key=lambda t: t[0])
 
-            chapter_headings_raw = headings_data.get(spec.name, {}).get(
-                chapter_number, []
-            )
-            headings = [
-                CanonicalHeading(before_verse=bv, text=t)
-                for bv, t in chapter_headings_raw
-            ]
+            chapter_headings_raw = headings_data.get(spec.name, {}).get(chapter_number, [])
+            headings = [CanonicalHeading(before_verse=bv, text=t) for bv, t in chapter_headings_raw]
 
-            chapter_footnotes_raw = footnotes_data.get(spec.name, {}).get(
-                chapter_number, []
-            )
+            chapter_footnotes_raw = footnotes_data.get(spec.name, {}).get(chapter_number, [])
             footnotes = [
-                CanonicalFootnote(verse_number=vn, text=t)
-                for vn, t in chapter_footnotes_raw
+                CanonicalFootnote(verse_number=vn, text=t) for vn, t in chapter_footnotes_raw
             ]
 
             chapters_sorted.append(
                 CanonicalChapter(
                     number=chapter_number,
-                    verses=[
-                        CanonicalVerse(number=n, text=t) for n, t in verses
-                    ],
+                    verses=[CanonicalVerse(number=n, text=t) for n, t in verses],
                     headings=headings,
                     footnotes=footnotes,
                 )
@@ -431,13 +417,9 @@ def parse_esv_source(text: str) -> tuple[CanonicalTranslation, list[str]]:
     )
 
 
-def _write_canonical_json(
-    translation: CanonicalTranslation, out_path: Path
-) -> None:
+def _write_canonical_json(translation: CanonicalTranslation, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        translation.model_dump_json(indent=2), encoding="utf-8"
-    )
+    out_path.write_text(translation.model_dump_json(indent=2), encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -446,9 +428,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Parse an ESV PDF into canonical Bible JSON.",
     )
     parser.add_argument("source", type=Path, help="Path to the ESV PDF")
-    parser.add_argument(
-        "--out", type=Path, required=True, help="Output path for canonical JSON"
-    )
+    parser.add_argument("--out", type=Path, required=True, help="Output path for canonical JSON")
     args = parser.parse_args(argv)
 
     try:
@@ -476,15 +456,9 @@ def main(argv: list[str] | None = None) -> int:
     for w in warnings:
         print(f"warning: {w}")
     chapters = sum(len(b.chapters) for b in translation.books)
-    verses = sum(
-        len(c.verses) for b in translation.books for c in b.chapters
-    )
-    fn_count = sum(
-        len(c.footnotes) for b in translation.books for c in b.chapters
-    )
-    h_count = sum(
-        len(c.headings) for b in translation.books for c in b.chapters
-    )
+    verses = sum(len(c.verses) for b in translation.books for c in b.chapters)
+    fn_count = sum(len(c.footnotes) for b in translation.books for c in b.chapters)
+    h_count = sum(len(c.headings) for b in translation.books for c in b.chapters)
     print(
         f"Parsed {translation.code}: {len(translation.books)} books, "
         f"{chapters} chapters, {verses} verses, "
