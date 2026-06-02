@@ -22,14 +22,15 @@ Query strategy (deliberate):
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from soap_journal.api.deps import get_current_user
 from soap_journal.core.bible.books import get_book_by_name
+from soap_journal.core.bible_search import run_search
 from soap_journal.core.errors import ErrorCode, raise_http
 from soap_journal.core.references import (
     ParsedReference,
@@ -59,6 +60,8 @@ from soap_journal.schemas.bible import (
     PassageEntriesResponse,
     ResolvedReference,
     ResolvedReferenceResponse,
+    SearchResponse,
+    SearchScope,
     TranslationDetailResponse,
     TranslationListResponse,
     TranslationSummary,
@@ -490,6 +493,43 @@ async def resolve_reference(
             end_verse=end,
         ),
         verses=selected,
+    )
+
+
+# ---- full-text search ------------------------------------------------------
+
+
+@router.get("/search", response_model=SearchResponse)
+async def search_scripture(
+    q: Annotated[str, Query(min_length=1)],
+    translation: str | None = None,
+    scope: SearchScope = "both",
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(get_current_user),
+) -> SearchResponse:
+    """Full-text search over verse text and translator's notes (FTS5, bm25).
+
+    Searches a single translation: the one named by `translation` (a code), or
+    the first-loaded translation by default — mirroring the reader. Verse and
+    note hits come back as separate ranked lists with highlighted snippets.
+    Note hits exist only where the translation has notes (i.e. NET); for a
+    translation without notes the note list is simply empty.
+    """
+    translation_row = (
+        await _get_translation_by_code(db, translation)
+        if translation is not None
+        else await _default_translation(db)
+    )
+    return await run_search(
+        db,
+        q=q,
+        translation_code=translation_row.code,
+        translation_id=translation_row.id,
+        scope=scope,
+        limit=limit,
+        offset=offset,
     )
 
 

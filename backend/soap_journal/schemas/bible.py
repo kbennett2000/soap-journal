@@ -113,3 +113,41 @@ class PassageEntriesResponse(BaseModel):
     reference: ResolvedReference
     count: int
     entries: list[EntryResponse]
+
+
+# ---- full-text search (ADR-0003) -------------------------------------------
+
+SearchScope = Literal["verses", "notes", "both"]
+
+
+class VerseSearchHit(BaseModel):
+    """A verse-text search hit. `book` is the abbreviation (display + navigable)."""
+
+    translation_code: str
+    book: str
+    chapter: int
+    verse: int
+    snippet: str  # contains <mark>...</mark> around matched terms
+
+
+class NoteSearchHit(BaseModel):
+    """A translator's-note search hit, anchored to the verse it annotates."""
+
+    translation_code: str
+    book: str
+    chapter: int
+    verse: int
+    note_type: NoteType | None = None
+    snippet: str
+
+
+class SearchResponse(BaseModel):
+    query: str
+    scope: SearchScope
+    translation_code: str  # the translation actually searched (resolved default)
+    verse_hits: list[VerseSearchHit]
+    note_hits: list[NoteSearchHit]
+    total_verse_hits: int
+    total_note_hits: int
+    limit: int
+    offset: int
