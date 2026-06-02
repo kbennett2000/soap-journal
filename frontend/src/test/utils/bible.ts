@@ -9,10 +9,14 @@
 import type {
   BookSummary,
   ChapterResponse,
+  FootnoteResponse,
+  NoteSearchHit,
+  SearchResponse,
   TranslationDetailResponse,
   TranslationListResponse,
   TranslationSummary,
   VerseResponse,
+  VerseSearchHit,
 } from "@/types/api";
 
 export const BSB_TRANSLATION: TranslationSummary = {
@@ -73,6 +77,21 @@ export function makeTranslationDetail(
   };
 }
 
+export function makeFootnote(overrides: Partial<FootnoteResponse> = {}): FootnoteResponse {
+  // Defaults to a plain footnote (the bundled-translation shape). Pass
+  // note_type/char_offset/cross_refs to model a NET typed note.
+  return {
+    id: 1,
+    text: "a footnote",
+    note_type: null,
+    char_offset: null,
+    marker: null,
+    ordinal: 0,
+    cross_refs: [],
+    ...overrides,
+  };
+}
+
 export function makeVerse(overrides: Partial<VerseResponse> = {}): VerseResponse {
   return {
     id: 1,
@@ -80,6 +99,39 @@ export function makeVerse(overrides: Partial<VerseResponse> = {}): VerseResponse
     text: "Sample verse text.",
     is_red_letter: false,
     footnotes: [],
+    ...overrides,
+  };
+}
+
+export function makeSearchResponse(
+  overrides: Partial<SearchResponse> = {},
+): SearchResponse {
+  const verseHit: VerseSearchHit = {
+    translation_code: "BSB",
+    book: "John",
+    chapter: 3,
+    verse: 16,
+    snippet: "For God so <mark>loved</mark> the world.",
+    translation_codes: null,
+  };
+  const noteHit: NoteSearchHit = {
+    translation_code: "NET",
+    book: "Gen",
+    chapter: 1,
+    verse: 1,
+    note_type: "tn",
+    snippet: "The <mark>Hebrew</mark> term...",
+  };
+  return {
+    query: "loved",
+    scope: "both",
+    translation_code: "BSB",
+    verse_hits: [verseHit],
+    note_hits: [noteHit],
+    total_verse_hits: 1,
+    total_note_hits: 1,
+    limit: 20,
+    offset: 0,
     ...overrides,
   };
 }

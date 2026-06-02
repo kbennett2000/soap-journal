@@ -6,6 +6,7 @@ import {
 } from "@/test/utils/admin";
 import {
   makeChapter,
+  makeSearchResponse,
   makeTranslationDetail,
   makeTranslationList,
 } from "@/test/utils/bible";
@@ -18,7 +19,7 @@ import {
   makeTagList,
 } from "@/test/utils/entries";
 import { makeUser } from "@/test/utils/factories";
-import type { AuthEnvelope } from "@/types/api";
+import type { AuthEnvelope, SearchScope } from "@/types/api";
 
 /**
  * Default happy-path handlers. Each test overrides the specific
@@ -71,6 +72,17 @@ export const chapterHandler = http.get(
     );
   },
 );
+
+export const searchHandler = http.get("/api/v1/bible/search", ({ request }) => {
+  const url = new URL(request.url);
+  const query = url.searchParams.get("q") ?? "";
+  const scope = (url.searchParams.get("scope") as SearchScope | null) ?? "both";
+  const translation = url.searchParams.get("translation") ?? "BSB";
+  return HttpResponse.json(
+    makeSearchResponse({ query, scope, translation_code: translation }),
+    { status: 200 },
+  );
+});
 
 export const resolveHandler = http.get("/api/v1/bible/resolve", ({ request }) => {
   const url = new URL(request.url);
@@ -227,6 +239,7 @@ export const defaultHandlers = [
   translationsHandler,
   translationDetailHandler,
   chapterHandler,
+  searchHandler,
   resolveHandler,
   passageEntriesHandler,
   calendarHandler,

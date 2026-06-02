@@ -4,9 +4,12 @@ import {
   getChapter,
   getTranslationDetail,
   listTranslations,
+  searchBible,
+  type SearchBibleParams,
 } from "@/lib/bible";
 import type {
   ChapterResponse,
+  SearchResponse,
   TranslationDetailResponse,
   TranslationListResponse,
 } from "@/types/api";
@@ -57,5 +60,32 @@ export function useChapter(
       typeof chapterNumber === "number" &&
       chapterNumber >= 1,
     staleTime: Infinity,
+  });
+}
+
+/**
+ * Full-text scripture search. Distinct from entry keyword search. The query is
+ * only enabled once `q` is non-empty (callers debounce `q` before passing it).
+ * `staleTime` is short — results are cheap and the corpus is static, but a
+ * fresh query string is a fresh key anyway.
+ */
+export function useBibleSearch(
+  params: SearchBibleParams,
+): UseQueryResult<SearchResponse> {
+  const { q, translation, scope, limit, offset } = params;
+  const trimmed = q.trim();
+  return useQuery({
+    queryKey: [
+      "bible",
+      "search",
+      trimmed,
+      translation ?? null,
+      scope ?? null,
+      limit ?? null,
+      offset ?? null,
+    ] as const,
+    queryFn: () => searchBible({ q: trimmed, translation, scope, limit, offset }),
+    enabled: trimmed.length > 0,
+    staleTime: FIVE_MIN,
   });
 }

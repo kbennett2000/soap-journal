@@ -3,6 +3,8 @@ import type {
   ChapterResponse,
   PassageEntriesResponse,
   ResolvedReferenceResponse,
+  SearchResponse,
+  SearchScope,
   TranslationDetailResponse,
   TranslationListResponse,
 } from "@/types/api";
@@ -53,5 +55,26 @@ export async function getPassageEntries(
 ): Promise<PassageEntriesResponse> {
   return apiRequest<PassageEntriesResponse>("GET", "/bible/passages/entries", {
     query: { ref, translation: translationCode },
+  });
+}
+
+export interface SearchBibleParams {
+  q: string;
+  /** A translation code, or "ALL" for grouped cross-translation search. */
+  translation?: string;
+  scope?: SearchScope;
+  limit?: number;
+  offset?: number;
+}
+
+export async function searchBible(params: SearchBibleParams): Promise<SearchResponse> {
+  return apiRequest<SearchResponse>("GET", "/bible/search", {
+    query: {
+      q: params.q,
+      translation: params.translation,
+      scope: params.scope,
+      limit: params.limit,
+      offset: params.offset,
+    },
   });
 }

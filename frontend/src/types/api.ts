@@ -60,9 +60,26 @@ export interface TranslationDetailResponse {
   books: BookSummary[];
 }
 
+/** Typed translator-note category; null for a plain footnote. */
+export type NoteType = "tn" | "sn" | "tc" | "map";
+
+export interface CrossRefResponse {
+  to_book: string; // target book abbreviation (display label + navigable alias)
+  to_chapter: number;
+  to_verse_start: number;
+  to_verse_end: number | null;
+}
+
 export interface FootnoteResponse {
   id: number;
   text: string;
+  // Rich-note fields (ADR-0002). Plain footnotes (the bundled translations)
+  // come back with note_type/char_offset/marker null, ordinal 0, cross_refs [].
+  note_type: NoteType | null;
+  char_offset: number | null;
+  marker: number | null;
+  ordinal: number;
+  cross_refs: CrossRefResponse[];
 }
 
 export interface VerseResponse {
@@ -105,6 +122,42 @@ export interface ResolvedReference {
 export interface ResolvedReferenceResponse {
   reference: ResolvedReference;
   verses: VerseResponse[];
+}
+
+// ---- Bible full-text search (ADR-0003) ------------------------------------
+
+export type SearchScope = "verses" | "notes" | "both";
+
+export interface VerseSearchHit {
+  translation_code: string;
+  book: string; // abbreviation (display + navigable)
+  chapter: number;
+  verse: number;
+  snippet: string; // contains <mark>...</mark> around matched terms
+  // In translation=ALL mode, the sorted list of translations that matched this
+  // canonical verse; null in single-translation mode.
+  translation_codes: string[] | null;
+}
+
+export interface NoteSearchHit {
+  translation_code: string;
+  book: string;
+  chapter: number;
+  verse: number;
+  note_type: NoteType | null;
+  snippet: string;
+}
+
+export interface SearchResponse {
+  query: string;
+  scope: SearchScope;
+  translation_code: string; // searched code, or "ALL" for cross-translation search
+  verse_hits: VerseSearchHit[];
+  note_hits: NoteSearchHit[];
+  total_verse_hits: number;
+  total_note_hits: number;
+  limit: number;
+  offset: number;
 }
 
 // ---- Entries + tags -------------------------------------------------------
