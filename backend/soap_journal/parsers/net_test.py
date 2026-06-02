@@ -173,14 +173,15 @@ def _gen1_chapterdata() -> ChapterData:
 
 
 def test_adapter_fills_omitted_verses_with_placeholder() -> None:
-    chapter = _chapter_to_canonical(_gen1_chapterdata())
+    chapter, _ = _chapter_to_canonical(_gen1_chapterdata())
     assert [v.number for v in chapter.verses] == [1, 2, 3]
     assert chapter.verses[1].text == "[verse not included in the NET]"
     assert chapter.verses[0].text == "In the beginning"
 
 
 def test_adapter_maps_typed_note_and_cross_refs() -> None:
-    chapter = _chapter_to_canonical(_gen1_chapterdata())
+    chapter, stats = _chapter_to_canonical(_gen1_chapterdata())
+    assert stats.dropped_cross_refs == 0
     assert len(chapter.footnotes) == 1
     fn = chapter.footnotes[0]
     assert fn.verse_number == 1
@@ -220,10 +221,54 @@ def test_adapter_clamps_char_offset_past_placeholder_to_none() -> None:
             )
         ],
     )
-    chapter = _chapter_to_canonical(cd)
+    chapter, _ = _chapter_to_canonical(cd)
     assert len(chapter.footnotes) == 1
     assert chapter.footnotes[0].verse_number == 2
     assert chapter.footnotes[0].char_offset is None
+
+
+def test_adapter_fills_present_but_empty_verse_with_distinct_placeholder() -> None:
+    # A verse present in the parse but with empty text (e.g. the Acts letter
+    # passages) gets the distinct "not captured" placeholder and is counted.
+    cd = ChapterData(
+        book_short="Gen",
+        book_full="Genesis",
+        book_position=1,
+        testament="OT",
+        chapter=1,
+        verses=[VerseRow(1, "In the beginning"), VerseRow(2, "   ")],
+    )
+    chapter, stats = _chapter_to_canonical(cd)
+    assert stats.uncaptured_verses == 1
+    assert chapter.verses[1].text == "[verse text not captured]"
+
+
+def test_adapter_drops_malformed_cross_ref() -> None:
+    # A backwards range (to_verse_end < to_verse_start) is unusable; the adapter
+    # drops it (counted) instead of letting it abort the whole parse.
+    cd = ChapterData(
+        book_short="Gen",
+        book_full="Genesis",
+        book_position=1,
+        testament="OT",
+        chapter=1,
+        verses=[VerseRow(1, "In the beginning")],
+        notes=[
+            NoteRow(
+                verse_number=1,
+                chapter=1,
+                marker=1,
+                word_offset=2,
+                type="tn",
+                body="a note with a junk range",
+                ordinal=0,
+                cross_refs=[CrossRefData("Lev", 25, 52, 15)],  # end < start
+            )
+        ],
+    )
+    chapter, stats = _chapter_to_canonical(cd)
+    assert stats.dropped_cross_refs == 1
+    assert chapter.footnotes[0].cross_refs == []
 
 
 def test_build_canonical_translation_requires_all_66_books() -> None:

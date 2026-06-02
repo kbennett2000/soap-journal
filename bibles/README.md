@@ -107,6 +107,39 @@ placeholder so references still land in the right place.
 2004, 2015 by Tyndale House Foundation. Used by permission of Tyndale
 House Publishers, Carol Stream, Illinois 60188. All rights reserved.
 
+## NET (New English Translation)
+
+**Source**: A 2,539-page two-column PDF of the NET Bible Translator's Edition.
+Like the NLT parser, it uses `pdftotext` (poppler-utils) for the two-column
+layout, parsing each book over its own page range from `pdftotext -bbox-layout`
+output. The runtime image ships with poppler-utils, so this works in-container
+with no extra setup.
+
+```bash
+# 1. Place the PDF at ./bibles/net.pdf
+# 2. Parse and load inside the container:
+docker compose exec soap-journal \
+  python -m soap_journal.parsers.net /app/bibles/net.pdf --out /tmp/net.json
+docker compose exec soap-journal \
+  python -m soap_journal.cli load-translation /tmp/net.json
+```
+
+**Translator's notes & cross-references**: NET is unique among the supported
+translations — it carries the NET's extensive **translator's notes**, typed as
+`tn` (translator), `sn` (study), `tc` (text-critical), or `map`. Each note is
+anchored to a character offset in its verse, ordered within the verse, and the
+cross-references embedded in note bodies (e.g. `Gen 2:4`, `John 1:1-3`) are
+extracted and stored as structured links to the target verses.
+
+**Verse numbering**: The NET omits certain disputed verses (e.g. Acts 8:37,
+John 5:4, Mark 9:44). The verse number is preserved with a placeholder
+(`[verse not included in the NET]`) so references still land in the right place
+and stay aligned with the other translations.
+
+**Copyright**: Scripture quoted by permission. Quotations designated (NET) are
+from the NET Bible® copyright © 1996, 2019 by Biblical Studies Press, L.L.C.
+http://netbible.com All rights reserved.
+
 ## Adding Other Translations
 
 The general pattern for any new translation:

@@ -36,7 +36,9 @@ from soap_journal.parsers.schema import CanonicalTranslation
 # Supported translation code -> parser module. Every parser module is named
 # for the lowercased code (matching scripts/docker-entrypoint.sh): BSB is the
 # plain-text parser, the 12 public-domain translations share the PDFMaker
-# engine, and ESV/NKJV/NLT are the user-supplied copyrighted parsers.
+# engine, and ESV/NKJV/NLT/NET are the user-supplied copyrighted parsers. NET
+# additionally carries typed translator's notes (tn/sn/tc/map) and the
+# cross-references embedded in them.
 PARSER_MODULES: dict[str, str] = {
     code: f"soap_journal.parsers.{code.lower()}"
     for code in (
@@ -56,6 +58,7 @@ PARSER_MODULES: dict[str, str] = {
         "ESV",
         "NKJV",
         "NLT",
+        "NET",
     )
 }
 

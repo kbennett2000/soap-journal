@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -67,6 +68,22 @@ NET_COPYRIGHT = (
 # verses such as Acts 8:37 and John 5:4). Keeps the canonical 1..N invariant and
 # cross-translation verse alignment intact. Mirrors nlt.py's placeholder.
 _OMITTED_VERSE_PLACEHOLDER = "[verse not included in the NET]"
+
+# Text inserted for verses that ARE present in the NET but whose text the parser
+# failed to capture (a small, known gap: the formatted "letter" passages in
+# Acts 15:24-29 and Acts 23:26-30 render in a font the height-classifier doesn't
+# read as verse body). Distinct from the omitted placeholder so the two cases
+# stay distinguishable. Canonical verse text must be non-empty.
+_UNCAPTURED_VERSE_PLACEHOLDER = "[verse text not captured]"
+
+
+@dataclass
+class AdapterStats:
+    """Diagnostics from adapting parsed NET data to the canonical schema."""
+
+    dropped_cross_refs: int = 0  # malformed (e.g. backwards-range) cross-refs dropped
+    uncaptured_verses: int = 0  # present-but-empty verses filled with a placeholder
+
 
 # Per-book PDF page table, ported verbatim from the private repo's
 # ingest/__main__.py. Fields: short, full, position, testament, n_chapters,
@@ -169,19 +186,33 @@ def _cross_ref_to_canonical(xr: CrossRefData) -> CanonicalCrossRef:
     )
 
 
-def _chapter_to_canonical(chapter: ChapterData) -> CanonicalChapter:
+def _chapter_to_canonical(chapter: ChapterData) -> tuple[CanonicalChapter, AdapterStats]:
     """Map a parsed ChapterData to a validated CanonicalChapter.
 
     Fills omitted verse numbers with placeholder text (so verses are 1..N
-    contiguous), maps typed notes and their cross-refs, and drops a note's
-    char_offset if it would point past the (possibly placeholder) verse text.
+    contiguous), substitutes a distinct placeholder for present-but-empty verses,
+    maps typed notes and their cross-refs, and drops a note's char_offset if it
+    would point past the (possibly placeholder) verse text.
+
+    Returns the chapter and an `AdapterStats` with the per-chapter diagnostics.
     """
-    verse_text = {v.number: v.text for v in chapter.verses}
-    max_v = max(verse_text) if verse_text else 0
-    canon_verses = [
-        CanonicalVerse(number=v, text=verse_text.get(v, _OMITTED_VERSE_PLACEHOLDER))
-        for v in range(1, max_v + 1)
-    ]
+    raw_text = {v.number: v.text for v in chapter.verses}
+    max_v = max(raw_text) if raw_text else 0
+
+    stats = AdapterStats()
+
+    def _text_for(num: int) -> str:
+        text = raw_text.get(num)
+        if text is None:
+            # The NET omits this verse number entirely (a gap).
+            return _OMITTED_VERSE_PLACEHOLDER
+        if not text.strip():
+            # Present in the NET but the parser captured no text.
+            stats.uncaptured_verses += 1
+            return _UNCAPTURED_VERSE_PLACEHOLDER
+        return text
+
+    canon_verses = [CanonicalVerse(number=v, text=_text_for(v)) for v in range(1, max_v + 1)]
     verse_len = {v.number: len(v.text) for v in canon_verses}
 
     footnotes: list[CanonicalFootnote] = []
@@ -195,6 +226,17 @@ def _chapter_to_canonical(chapter: ChapterData) -> CanonicalChapter:
         # whose placeholder is shorter) would fail the chapter validator — drop
         # the anchor rather than the note.
         char_offset = note.word_offset if note.word_offset <= vlen else None
+        cross_refs: list[CanonicalCrossRef] = []
+        for xr in note.cross_refs:
+            try:
+                cross_refs.append(_cross_ref_to_canonical(xr))
+            except ValidationError:
+                # Best-effort regex extraction occasionally yields a malformed
+                # range (e.g. to_verse_end < to_verse_start) or an out-of-range
+                # number. Such a cross-ref is not a usable link, so drop it
+                # rather than abort the whole ingest. (An unknown book
+                # abbreviation still raises NetParseError — that's a real bug.)
+                stats.dropped_cross_refs += 1
         footnotes.append(
             CanonicalFootnote(
                 verse_number=note.verse_number,
@@ -203,7 +245,7 @@ def _chapter_to_canonical(chapter: ChapterData) -> CanonicalChapter:
                 char_offset=char_offset,
                 marker=note.marker,
                 ordinal=note.ordinal,
-                cross_refs=[_cross_ref_to_canonical(xr) for xr in note.cross_refs],
+                cross_refs=cross_refs,
             )
         )
 
@@ -213,34 +255,43 @@ def _chapter_to_canonical(chapter: ChapterData) -> CanonicalChapter:
         if before_verse in verse_len
     ]
 
-    return CanonicalChapter(
+    canon_chapter = CanonicalChapter(
         number=chapter.chapter,
         verses=canon_verses,
         headings=headings,
         footnotes=footnotes,
     )
+    return canon_chapter, stats
 
 
-def build_canonical_translation(chapters: list[ChapterData]) -> CanonicalTranslation:
+def build_canonical_translation(
+    chapters: list[ChapterData],
+) -> tuple[CanonicalTranslation, AdapterStats]:
     """Assemble a validated CanonicalTranslation from parsed NET chapter data.
 
     Chapters are grouped by `book_position`, which equals the canonical
     `order_index`; each book is built from SOAP's canonical name/abbreviation
     (joining on order, not NET's names — sidesteps name reconciliation, e.g. NET
     "Song of Songs" vs canonical "Song of Solomon").
+
+    Returns the translation and the summed `AdapterStats` across all chapters.
     """
     by_position: dict[int, list[ChapterData]] = {}
     for chapter in chapters:
         by_position.setdefault(chapter.book_position, []).append(chapter)
 
+    totals = AdapterStats()
     canonical_books: list[CanonicalBook] = []
     for spec in ALL_BOOKS:
         book_chapters = by_position.get(spec.order_index)
         if not book_chapters:
             raise NetParseError(f"parse produced no chapters for {spec.name!r}")
-        canon_chapters = [
-            _chapter_to_canonical(c) for c in sorted(book_chapters, key=lambda c: c.chapter)
-        ]
+        canon_chapters: list[CanonicalChapter] = []
+        for c in sorted(book_chapters, key=lambda c: c.chapter):
+            canon_chapter, stats = _chapter_to_canonical(c)
+            canon_chapters.append(canon_chapter)
+            totals.dropped_cross_refs += stats.dropped_cross_refs
+            totals.uncaptured_verses += stats.uncaptured_verses
         canonical_books.append(
             CanonicalBook(
                 name=spec.name,
@@ -250,20 +301,22 @@ def build_canonical_translation(chapters: list[ChapterData]) -> CanonicalTransla
             )
         )
 
-    return CanonicalTranslation(
+    translation = CanonicalTranslation(
         code=NET_CODE,
         name=NET_NAME,
         language=NET_LANGUAGE,
         copyright=NET_COPYRIGHT,
         books=canonical_books,
     )
+    return translation, totals
 
 
-def parse_net_pdf(pdf_path: Path) -> CanonicalTranslation:
+def parse_net_pdf(pdf_path: Path) -> tuple[CanonicalTranslation, AdapterStats]:
     """Parse the whole NET PDF into a validated CanonicalTranslation.
 
     Drives `net_pdf.parse_book` once per book over its page range (one
-    `pdftotext` invocation per book), then runs the canonical adapter.
+    `pdftotext` invocation per book), then runs the canonical adapter. Returns
+    the translation and the summed `AdapterStats`.
     """
     all_chapters: list[ChapterData] = []
     for idx, (short, full, position, testament, n_chapters, first_pdf) in enumerate(BOOKS):
@@ -297,7 +350,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        translation = parse_net_pdf(args.source)
+        translation, stats = parse_net_pdf(args.source)
     except FileNotFoundError:
         print("error: pdftotext not found; install poppler-utils", file=sys.stderr)
         return 2
@@ -312,6 +365,18 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     _write_canonical_json(translation, args.out)
+    if stats.dropped_cross_refs:
+        print(
+            f"note: dropped {stats.dropped_cross_refs} malformed cross-reference(s) "
+            f"(e.g. backwards or out-of-range ranges from regex extraction)",
+            file=sys.stderr,
+        )
+    if stats.uncaptured_verses:
+        print(
+            f"note: {stats.uncaptured_verses} present-but-empty verse(s) filled with "
+            f"a placeholder (text not captured by the parser)",
+            file=sys.stderr,
+        )
     chapters = sum(len(b.chapters) for b in translation.books)
     verses = sum(len(c.verses) for b in translation.books for c in b.chapters)
     print(
