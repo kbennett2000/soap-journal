@@ -19,6 +19,7 @@ import {
   useUpdateAnnotation,
 } from "@/hooks/useAnnotations";
 import { AnnotationPanel } from "@/components/reader/AnnotationPanel";
+import { ReaderPanelShell } from "@/components/reader/ReaderPanelShell";
 import {
   readFontSize,
   readLastLocation,
@@ -107,9 +108,11 @@ function ReaderInner({
   const deleteHighlight = useDeleteAnnotation();
 
   // The annotation edit panel (5c-3): the covering set for the clicked run plus
-  // the active annotation (defaults to the top). Hosted inline this cycle; the
-  // desktop side-panel / mobile bottom-sheet shell is 5c-4.
-  const [panel, setPanel] = useState<{ ids: number[]; activeId: number } | null>(null);
+  // the active annotation (defaults to the top). Hosted in the responsive shell
+  // (5c-4). The open-surface union grows a "note" kind in 5c-4 step 3.
+  const [panel, setPanel] = useState<
+    { kind: "annotation"; ids: number[]; activeId: number } | null
+  >(null);
 
   // Reset the edit panel when the chapter changes — the URL params drive
   // ReaderInner without a remount, so close any open panel (render-phase
@@ -200,13 +203,14 @@ function ReaderInner({
   const chapterAnnotations = annotationsQuery.data?.annotations ?? [];
   function handleOpenAnnotations(ids: number[]): void {
     if (ids.length === 0) return;
-    setPanel({ ids, activeId: ids[ids.length - 1]! });
+    setPanel({ kind: "annotation", ids, activeId: ids[ids.length - 1]! });
   }
-  const panelAnnotations: Annotation[] = panel
-    ? panel.ids
-        .map((id) => chapterAnnotations.find((a) => a.id === id))
-        .filter((a): a is Annotation => a !== undefined)
-    : [];
+  const panelAnnotations: Annotation[] =
+    panel?.kind === "annotation"
+      ? panel.ids
+          .map((id) => chapterAnnotations.find((a) => a.id === id))
+          .filter((a): a is Annotation => a !== undefined)
+      : [];
 
   function handleVerseClick(verse: VerseResponse, paneCode?: string): void {
     const code = paneCode ?? translationCode;
@@ -325,60 +329,69 @@ function ReaderInner({
           />
         </div>
       ) : (
-        <>
-          {chapterQuery.isLoading && <ChapterSkeleton />}
+        // Single-pane region becomes a flex row at lg: reader (flex-1) beside
+        // the docked panel shell; below lg the shell is a fixed bottom-sheet so
+        // the reader keeps full width.
+        <div className="lg:flex lg:items-start lg:gap-6">
+          <div className="min-w-0 lg:flex-1">
+            {chapterQuery.isLoading && <ChapterSkeleton />}
 
-          {chapterQuery.isError && (
-            <ChapterError
-              error={chapterQuery.error}
-              onRetry={() => {
-                void chapterQuery.refetch();
-              }}
-            />
-          )}
+            {chapterQuery.isError && (
+              <ChapterError
+                error={chapterQuery.error}
+                onRetry={() => {
+                  void chapterQuery.refetch();
+                }}
+              />
+            )}
 
-          {chapterQuery.data && (
-            <PassageEntriesBadge
-              key={`${translationCode}/${bookName}/${chapterNumber}`}
-              passageRef={`${bookName} ${chapterNumber}`}
-              translationCode={translationCode}
-            />
-          )}
+            {chapterQuery.data && (
+              <PassageEntriesBadge
+                key={`${translationCode}/${bookName}/${chapterNumber}`}
+                passageRef={`${bookName} ${chapterNumber}`}
+                translationCode={translationCode}
+              />
+            )}
 
-          {chapterQuery.data && (
-            <ChapterContent
-              chapter={chapterQuery.data}
-              layout={layout}
-              fontSize={fontSize}
-              highlightRange={highlightRange}
-              onVerseClick={(v) => handleVerseClick(v)}
-              annotations={chapterAnnotations}
-              onCreateHighlight={(input) => createHighlight.mutate(input)}
-              onOpenAnnotations={handleOpenAnnotations}
-            />
-          )}
+            {chapterQuery.data && (
+              <ChapterContent
+                chapter={chapterQuery.data}
+                layout={layout}
+                fontSize={fontSize}
+                highlightRange={highlightRange}
+                onVerseClick={(v) => handleVerseClick(v)}
+                annotations={chapterAnnotations}
+                onCreateHighlight={(input) => createHighlight.mutate(input)}
+                onOpenAnnotations={handleOpenAnnotations}
+              />
+            )}
+          </div>
 
-          {panel && panelAnnotations.length > 0 && (
-            <AnnotationPanel
-              annotations={panelAnnotations}
-              activeId={panel.activeId}
-              onSelectActive={(id) =>
-                setPanel((p) => (p ? { ...p, activeId: id } : p))
-              }
-              onChangeColor={(id, color) =>
-                updateHighlight.mutate({ annotationId: id, body: { color } })
-              }
-              onSaveNote={(id, note) =>
-                updateHighlight.mutate({ annotationId: id, body: { note } })
-              }
-              onDelete={(id) => {
-                deleteHighlight.mutate(id);
-                setPanel(null);
-              }}
-              onClose={() => setPanel(null)}
-            />
+          {panel?.kind === "annotation" && panelAnnotations.length > 0 && (
+            <ReaderPanelShell onClose={() => setPanel(null)}>
+              <AnnotationPanel
+                annotations={panelAnnotations}
+                activeId={panel.activeId}
+                onSelectActive={(id) =>
+                  setPanel((p) =>
+                    p && p.kind === "annotation" ? { ...p, activeId: id } : p,
+                  )
+                }
+                onChangeColor={(id, color) =>
+                  updateHighlight.mutate({ annotationId: id, body: { color } })
+                }
+                onSaveNote={(id, note) =>
+                  updateHighlight.mutate({ annotationId: id, body: { note } })
+                }
+                onDelete={(id) => {
+                  deleteHighlight.mutate(id);
+                  setPanel(null);
+                }}
+                onClose={() => setPanel(null)}
+              />
+            </ReaderPanelShell>
           )}
-        </>
+        </div>
       )}
 
       {chapterQuery.data && (

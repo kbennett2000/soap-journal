@@ -170,6 +170,41 @@ describe("ReaderPage — annotation panel (5c-3)", () => {
     );
   });
 
+  it("hosts the panel in the responsive shell, rendered exactly once", async () => {
+    installAnnotationStore([bsbAnnotation({ id: 5, char_start: 0, char_end: 7 })]);
+    renderReader();
+    await screen.findByTestId("verse-16");
+    await waitFor(() => expect(highlightSpan(5)).toBeInTheDocument());
+
+    fireEvent.mouseUp(highlightSpan(5)!);
+    expect(await screen.findByTestId("reader-panel-shell")).toBeInTheDocument();
+    // Single render — no desktop+mobile duplication (would break ids/testids).
+    expect(screen.getAllByTestId("annotation-panel")).toHaveLength(1);
+  });
+
+  it("closes the shell on Escape and on a backdrop tap", async () => {
+    installAnnotationStore([bsbAnnotation({ id: 5, char_start: 0, char_end: 7 })]);
+    renderReader();
+    await screen.findByTestId("verse-16");
+    await waitFor(() => expect(highlightSpan(5)).toBeInTheDocument());
+
+    // Escape.
+    fireEvent.mouseUp(highlightSpan(5)!);
+    await screen.findByTestId("annotation-panel");
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByTestId("annotation-panel")).not.toBeInTheDocument(),
+    );
+
+    // Backdrop tap.
+    fireEvent.mouseUp(highlightSpan(5)!);
+    await screen.findByTestId("annotation-panel");
+    fireEvent.click(screen.getByTestId("panel-backdrop"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("annotation-panel")).not.toBeInTheDocument(),
+    );
+  });
+
   it("deleting a highlight that HAS a note asks for confirmation first", async () => {
     installAnnotationStore([
       bsbAnnotation({ id: 5, char_start: 0, char_end: 7, note: "keep me?" }),
