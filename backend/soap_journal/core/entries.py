@@ -155,7 +155,7 @@ async def _resolve_scripture(
     )
 
 
-async def _resolve_tags(db: AsyncSession, user_id: int, names: list[str]) -> list[Tag]:
+async def resolve_tags(db: AsyncSession, user_id: int, names: list[str]) -> list[Tag]:
     """Resolve user-supplied tag names to Tag rows for this user.
 
     - Deduplicates within `names` case-insensitively (first occurrence's
@@ -244,7 +244,7 @@ async def save_entry(
 
     # Rebuild tag links. Orphaned Tag rows stay around per spec (so they
     # keep autocompleting).
-    tags = await _resolve_tags(db, user_id, tag_names)
+    tags = await resolve_tags(db, user_id, tag_names)
     await db.execute(
         delete(EntryTag)
         .where(EntryTag.entry_id == entry.id)

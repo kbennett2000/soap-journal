@@ -54,3 +54,20 @@ class BackupDocument(BaseModel):
     version: Literal[1] = 1
     exported_at: str  # ISO-8601 UTC, trailing Z
     entries: list[BackupEntry]
+
+
+class ImportReport(BaseModel):
+    """Outcome of merging a backup document into a user's journal.
+
+    Not validated against the phone (it's an outcome object, not a file), so it
+    is a plain model. Produced by ``core/backup_import.import_backup`` and also
+    serves as the import endpoint's response in a later cycle.
+    """
+
+    inserted: int = 0
+    updated: int = 0
+    skipped_unchanged: int = 0
+    skipped_missing_translation: int = 0
+    missing_translations: list[str] = []  # distinct codes, sorted
+    total_in_file: int = 0
+    dry_run: bool = False
