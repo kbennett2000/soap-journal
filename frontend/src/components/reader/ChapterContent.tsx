@@ -117,7 +117,11 @@ export function ChapterContent({
 
   const [popover, setPopover] = useState<PopoverState | null>(null);
 
-  function handleMouseUp(event: React.MouseEvent): void {
+  // Shared selection-finished action for both mouse and touch. Idempotent: a
+  // non-null selection opens (or re-opens) the same create popover; a collapsed
+  // selection (a tap/click) either opens an existing highlight's panel or
+  // dismisses. `target` is the element the pointer ended on (for the hit-test).
+  function runSelectionAction(target: HTMLElement | null): void {
     if (!highlightLayerEnabled) return;
     const selection = resolveSelectionFn();
     // `rangeToVerseSelection` returns null for a collapsed selection, so any
@@ -138,11 +142,10 @@ export function ChapterContent({
       }
       return;
     }
-    // Collapsed click on an existing highlight (run or +N badge): open the edit
-    // panel for the FULL covering set (data-highlight-ids), so overlapped
+    // Collapsed click/tap on an existing highlight (run or +N badge): open the
+    // edit panel for the FULL covering set (data-highlight-ids), so overlapped
     // annotations underneath the top are reachable (5c-3).
-    const target = event.target as HTMLElement;
-    const hit = target.closest?.("[data-highlight-id]") as HTMLElement | null;
+    const hit = target?.closest?.("[data-highlight-id]") as HTMLElement | null;
     if (hit && onOpenAnnotations) {
       const raw =
         hit.getAttribute("data-highlight-ids") ??
@@ -158,6 +161,19 @@ export function ChapterContent({
       }
     }
     setPopover(null);
+  }
+
+  function handleMouseUp(event: React.MouseEvent): void {
+    // Mouse selection is finalized by mouseup — read synchronously.
+    runSelectionAction(event.target as HTMLElement);
+  }
+
+  function handleTouchEnd(event: React.TouchEvent): void {
+    // The browser finalizes the selection Range AFTER touchend dispatches, so
+    // defer the read one macrotask. Capture the target now (don't reach into the
+    // event later). No preventDefault — that would suppress native selection.
+    const target = event.target as HTMLElement;
+    setTimeout(() => runSelectionAction(target), 0);
   }
 
   function clearLiveSelection(): void {
@@ -188,6 +204,7 @@ export function ChapterContent({
       data-testid="chapter-content"
       data-chapter={`${chapter.translation_code}/${chapter.book.name}/${chapter.chapter_number}`}
       onMouseUp={handleMouseUp}
+      onTouchEnd={handleTouchEnd}
       className={`prose prose-slate max-w-none dark:prose-invert ${sizeClass}`}
     >
       <h1 className="!mb-2 !mt-0 text-2xl font-semibold">
@@ -471,10 +488,13 @@ function SelectionPopover({
         top: Math.max(8, popover.top - 44),
         left: Math.max(8, popover.left),
       }}
-      // Keep the popover's own mouse events from re-triggering the article's
+      // Keep the popover's own pointer events from re-triggering the article's
       // selection handler (which would close it before a swatch click lands).
+      // touchEnd matters on touch: a swatch tap bubbling to the article would
+      // fire the deferred handler and dismiss the popover before onClick lands.
       onMouseUp={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
       className="z-20 flex items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
     >
       {HIGHLIGHT_COLORS.map((color) => (

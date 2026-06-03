@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 
 import { ChapterContent } from "@/components/reader/ChapterContent";
 import { makeAnnotation, makeChapter, makeFootnote, makeVerse } from "@/test/utils/bible";
@@ -407,5 +407,119 @@ describe("ChapterContent — overlap +N (5c-2)", () => {
       annotations: overlapAnnotations().map((a) => ({ ...a, translation_code: "KJV" })),
     });
     expect(container.querySelectorAll("[data-highlight-id]")).toHaveLength(0);
+  });
+});
+
+// 5c-5: the touch path WIRING is automatable via the injected resolver — these
+// drive touchend → deferred read → the shared runSelectionAction. The real
+// window.getSelection()-after-a-physical-drag is device-only (manual checklist)
+// and is NOT simulated here; resolveSelectionFn stands in for it.
+describe("ChapterContent — touch selection wiring (5c-5)", () => {
+  const singleVerseSelection: VerseSelection = {
+    verseStart: 16,
+    verseEnd: 16,
+    charStart: 0,
+    charEnd: 7,
+    rect: { top: 100, left: 50, width: 40, height: 16 },
+  };
+
+  it("touchend opens the create popover after the deferred read, then creates", async () => {
+    const onCreateHighlight = vi.fn();
+    renderContent(netChapterWithMarker(), {
+      annotations: [],
+      onCreateHighlight,
+      resolveSelectionFn: () => singleVerseSelection,
+    });
+
+    expect(screen.queryByTestId("highlight-popover")).not.toBeInTheDocument();
+    fireEvent.touchEnd(screen.getByTestId("chapter-content"));
+
+    // Deferred a macrotask — findBy waits for it.
+    const popover = await screen.findByTestId("highlight-popover");
+    fireEvent.click(within(popover).getByRole("button", { name: "Highlight Yellow" }));
+    expect(onCreateHighlight).toHaveBeenCalledWith(
+      expect.objectContaining({ verse_start: 16, verse_end: 16, color: "yellow" }),
+    );
+  });
+
+  it("a plain tap (collapsed selection) opens no create popover", async () => {
+    const onCreateHighlight = vi.fn();
+    renderContent(netChapterWithMarker(), {
+      annotations: [],
+      onCreateHighlight,
+      resolveSelectionFn: () => null,
+    });
+
+    fireEvent.touchEnd(screen.getByTestId("chapter-content"));
+    // Let the deferred tick run, then assert nothing opened.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByTestId("highlight-popover")).not.toBeInTheDocument();
+    expect(onCreateHighlight).not.toHaveBeenCalled();
+  });
+
+  it("touchend + a synthesized mouseup converge to a SINGLE popover (no double-fire)", async () => {
+    renderContent(netChapterWithMarker(), {
+      annotations: [],
+      onCreateHighlight: vi.fn(),
+      resolveSelectionFn: () => singleVerseSelection,
+    });
+    const cc = screen.getByTestId("chapter-content");
+    fireEvent.touchEnd(cc); // deferred
+    fireEvent.mouseUp(cc); // synchronous — same selection
+    await screen.findByTestId("highlight-popover");
+    expect(screen.getAllByTestId("highlight-popover")).toHaveLength(1);
+  });
+
+  it("a tap on an existing highlight opens the panel on touch (onOpenAnnotations)", async () => {
+    const onOpenAnnotations = vi.fn();
+    const { container } = renderContent(netChapterWithMarker(), {
+      annotations: [makeAnnotation({ id: 42, char_start: 0, char_end: 5 })],
+      onOpenAnnotations,
+      resolveSelectionFn: () => null, // a tap, not a drag
+    });
+    const span = container.querySelector<HTMLElement>('[data-highlight-id="42"]');
+    if (!span) throw new Error("expected a rendered highlight span");
+    fireEvent.touchEnd(span);
+    await waitFor(() => expect(onOpenAnnotations).toHaveBeenCalledWith([42]));
+  });
+
+  it("a swatch tap does not let the deferred article handler dismiss the popover", async () => {
+    // The bug class: a swatch touchend bubbling to the article fires the
+    // deferred handler; if the selection has collapsed by then it would
+    // setPopover(null) and drop the color pick. The popover stops touchEnd.
+    const onCreateHighlight = vi.fn();
+    let calls = 0;
+    renderContent(netChapterWithMarker(), {
+      annotations: [],
+      onCreateHighlight,
+      // First read (opening) sees the selection; a later read (were a swatch tap
+      // to reach the article) would see a collapsed selection → null.
+      resolveSelectionFn: () => (calls++ === 0 ? singleVerseSelection : null),
+    });
+
+    fireEvent.touchEnd(screen.getByTestId("chapter-content"));
+    const popover = await screen.findByTestId("highlight-popover");
+    const swatch = within(popover).getByRole("button", { name: "Highlight Yellow" });
+
+    fireEvent.touchEnd(swatch); // must NOT bubble to the article handler
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByTestId("highlight-popover")).toBeInTheDocument();
+
+    fireEvent.click(swatch);
+    expect(onCreateHighlight).toHaveBeenCalledWith(
+      expect.objectContaining({ color: "yellow" }),
+    );
+  });
+
+  it("the verse-number new-entry control still fires its own onClick (independent of touchend)", () => {
+    const onVerseClick = vi.fn();
+    renderContent(netChapterWithMarker(), {
+      annotations: [],
+      onCreateHighlight: vi.fn(),
+      resolveSelectionFn: () => null,
+      onVerseClick,
+    });
+    fireEvent.click(screen.getByTestId("verse-16-new-entry"));
+    expect(onVerseClick).toHaveBeenCalledTimes(1);
   });
 });

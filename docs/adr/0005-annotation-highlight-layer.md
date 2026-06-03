@@ -274,3 +274,39 @@ text-SELECTION (touchend + deferred range) remains **5c-5**.
   layouts); all 5c-3 highlight flows still pass through the shell. typecheck + lint + 236 tests green.
   Manual (jsdom does no layout/gestures): bottom-sheet vs docked column across the `lg` boundary;
   the docked panel stays in view while scrolling; comfortable tap target on a phone; dark mode.
+
+---
+
+## Cycle 5c-5 addendum — touch selection
+
+**Status:** Automated coverage complete; **device verification pending user sign-off** — NOT done.
+Touch text-selection → highlight works through the same flow as mouse; the real gesture is verified
+only on physical devices (checklist below), which gates closure.
+
+- **Shared idempotent action.** `handleMouseUp`'s body was extracted into
+  `runSelectionAction(target)` (create popover for a non-null selection; else hit-test the target's
+  `data-highlight-ids` → open the panel; else dismiss). `handleMouseUp` calls it synchronously;
+  a new `handleTouchEnd` binds `onTouchEnd` on the `<article>` alongside `onMouseUp`.
+- **Deferred read.** `handleTouchEnd` captures `event.target`, then `setTimeout(() =>
+  runSelectionAction(target), 0)` — the browser finalizes the selection Range *after* `touchend`, so
+  a synchronous read is stale. No `preventDefault` (it would suppress native selection).
+- **No double-fire.** `runSelectionAction` is idempotent: a `touchend` (deferred) plus the browser's
+  synthesized `mouseup` converge to one popover. A plain tap → collapsed selection →
+  `rangeToVerseSelection` returns `null` → no create popover (the existing collapsed→null rejector);
+  a tap on a highlight opens the panel; the verse-number new-entry `onClick` is separate/unaffected.
+- **Popover stops `onTouchEnd` too.** The create popover already stopped `onMouseUp`/`onMouseDown`;
+  5c-5 adds `onTouchEnd` stopPropagation so a swatch tap can't bubble to the article and let the
+  deferred handler dismiss the popover before the color pick lands (regression-tested).
+- **Untouched:** `selection.ts` (`rangeToVerseSelection`/`resolveSelection` reused as-is), the shell,
+  AnnotationPanel, NoteView, the desktop path, and highlight rendering/overlap. Popover edge-clamp/
+  flip + focus-trap remain **5c-6**.
+- **Coverage split.** Automated (RTL, injected resolver): touchend→deferred→create popover; tap→no
+  popover; touchend+mouseup→single popover; tap-on-highlight→`onOpenAnnotations`; swatch-tap doesn't
+  dismiss; verse-number `onClick` independent. **Device-only (NOT automatable, jsdom can't produce a
+  real touch Selection):** the literal drag-select → `window.getSelection()` read — the manual
+  checklist below, on iOS Safari + Android Chrome, is part of acceptance.
+
+**Manual device checklist (gates "done"):** drag-select within a verse → create popover → color
+persists on reload; multi-verse touch-drag; plain tap → no popover, verse-number still creates an
+entry; tap a highlight / `+N` badge → panel + stack chooser; translation filter hides/shows; no ghost
+popover and dismissal works; portrait + landscape; dark mode.
