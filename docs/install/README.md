@@ -64,3 +64,14 @@ lives on.
 Every guide links to it, but you can jump straight there:
 [**Troubleshooting**](troubleshooting.md) — common problems, what causes them,
 and how to fix them, organized by symptom and platform.
+
+---
+
+## Advanced: installing without Docker
+
+Docker is the recommended path for everyone — the guides above use it. If you
+have a specific reason to avoid Docker and you're comfortable in a terminal,
+there are direct-install guides too:
+
+- [Linux / macOS without Docker](manual.md)
+- [Windows without Docker](windows-manual.md)

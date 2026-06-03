@@ -24,7 +24,8 @@ Pick the half you want to work on:
 
 - Backend: see [backend/README.md](backend/README.md).
 - Frontend: see [frontend/README.md](frontend/README.md).
-- End-to-end (Docker): see the repo-root `README.md` "Quick Start".
+- End-to-end (Docker): see the "Quick start" fold under "For developers" in the
+  repo-root `README.md`.
 
 ## Running tests
 

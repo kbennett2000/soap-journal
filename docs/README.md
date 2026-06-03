@@ -32,9 +32,15 @@ the calendar, admin tasks, and backups.
   Desktop.
 - [`install/ubuntu-server.md`](install/ubuntu-server.md) — the full
   walkthrough for a dedicated Ubuntu/Linux home server.
+- [`install/manual.md`](install/manual.md) — advanced: installing on
+  Linux/macOS without Docker.
 - [`install/troubleshooting.md`](install/troubleshooting.md) —
   symptoms, diagnoses, and fixes for install-time problems (with a
   Windows & Mac section).
+- [`configuration.md`](configuration.md) — the optional `.env` settings and
+  what each one does.
+- [`bibles.md`](bibles.md) — the 13 bundled translations and how to add your
+  own.
 - [`usage/`](usage/) — the end-user usage guide, in nine chapters.
 - [`screenshots/`](screenshots/) — the PNG screenshots embedded in
   every doc. Captured from a real running instance by the script at

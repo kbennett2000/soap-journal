@@ -7,7 +7,7 @@ They're all loaded automatically when the container first boots. The
 reader is the screen for actually reading them.
 
 You can also add the **NET Bible** (New English Translation) — see
-[Adding a Bible translation](../../README.md#adding-a-bible-translation).
+[Adding your own translation](../bibles.md#adding-your-own-translation).
 NET is the one translation that carries inline **translator's notes** and
 **cross-references**; once it's loaded, the reader shows them (see
 [Translator's notes](#translators-notes-and-cross-references) below).
