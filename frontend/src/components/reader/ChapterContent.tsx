@@ -7,6 +7,7 @@ import {
   HIGHLIGHT_COLOR_LABELS,
   highlightVar,
 } from "@/lib/highlightColors";
+import { computePopoverPosition } from "@/lib/popoverPosition";
 import {
   resolveSelection as liveResolveSelection,
   type VerseSelection,
@@ -66,12 +67,15 @@ interface ChapterContentProps {
 }
 
 // The popover is only ever the create swatches now (5c-3 retired the remove
-// popover — existing highlights open the AnnotationPanel instead).
+// popover — existing highlights open the AnnotationPanel instead). Position is
+// computed at render time from the selection rect (clamp/flip, 5c-6).
 interface PopoverState {
   selection: VerseSelection;
-  top: number;
-  left: number;
 }
+
+// Estimated rendered size of the create popover (6 swatches + cancel + padding),
+// used only to keep it clamped on screen — exact pixels aren't required.
+const POPOVER_SIZE = { width: 220, height: 48 };
 
 export function ChapterContent({
   chapter,
@@ -132,11 +136,7 @@ export function ChapterContent({
       // `rangeToVerseSelection` already refuses selections that cross a chapter
       // boundary, so any non-null selection here is in-chapter.
       if (onCreateHighlight) {
-        setPopover({
-          selection,
-          top: selection.rect.top,
-          left: selection.rect.left,
-        });
+        setPopover({ selection });
       } else {
         setPopover(null);
       }
@@ -478,6 +478,13 @@ function SelectionPopover({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onCancel]);
+  // Position centered over the selection, above it (flipping below) and clamped
+  // to the viewport so it's never off-screen (5c-6).
+  const viewport = {
+    width: typeof window !== "undefined" ? window.innerWidth : 1024,
+    height: typeof window !== "undefined" ? window.innerHeight : 768,
+  };
+  const pos = computePopoverPosition(popover.selection.rect, viewport, POPOVER_SIZE);
   return (
     <div
       data-testid="highlight-popover"
@@ -485,8 +492,8 @@ function SelectionPopover({
       aria-label="Highlight"
       style={{
         position: "fixed",
-        top: Math.max(8, popover.top - 44),
-        left: Math.max(8, popover.left),
+        top: pos.top,
+        left: pos.left,
       }}
       // Keep the popover's own pointer events from re-triggering the article's
       // selection handler (which would close it before a swatch click lands).

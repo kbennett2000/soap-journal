@@ -225,3 +225,111 @@ describe("ReaderPage — annotation panel (5c-3)", () => {
     await waitFor(() => expect(highlightSpan(5)).not.toBeInTheDocument());
   });
 });
+
+describe("ReaderPage — mutation error feedback (5c-6)", () => {
+  function failPatch(): void {
+    server.use(
+      http.patch("/api/v1/annotations/:id", () =>
+        HttpResponse.json(
+          { detail: { code: "SERVER_ERROR", message: "boom" } },
+          { status: 500 },
+        ),
+      ),
+    );
+  }
+
+  it("surfaces a dismissible error when a color change fails; the highlight is unchanged", async () => {
+    installAnnotationStore([
+      bsbAnnotation({ id: 5, char_start: 0, char_end: 7, color: "yellow", note: null }),
+    ]);
+    failPatch();
+    renderReader();
+    await screen.findByTestId("verse-16");
+    await waitFor(() => expect(highlightSpan(5)).toBeInTheDocument());
+
+    fireEvent.mouseUp(highlightSpan(5)!);
+    const panel = await screen.findByTestId("annotation-panel");
+    fireEvent.click(within(panel).getByLabelText("Set color Green"));
+
+    expect(await screen.findByTestId("annotation-error")).toBeInTheDocument();
+    // Coherent: the failed PATCH didn't change the rendered color.
+    expect(highlightSpan(5)!.style.backgroundColor).toBe("var(--hl-yellow)");
+
+    // Dismiss clears it.
+    fireEvent.click(
+      within(screen.getByTestId("annotation-error")).getByRole("button", {
+        name: /dismiss/i,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("annotation-error")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("surfaces an error when saving a note fails, and keeps the typed text", async () => {
+    installAnnotationStore([
+      bsbAnnotation({ id: 5, char_start: 0, char_end: 7, note: null }),
+    ]);
+    failPatch();
+    renderReader();
+    await screen.findByTestId("verse-16");
+    await waitFor(() => expect(highlightSpan(5)).toBeInTheDocument());
+
+    fireEvent.mouseUp(highlightSpan(5)!);
+    const panel = await screen.findByTestId("annotation-panel");
+    fireEvent.change(within(panel).getByLabelText("Note"), {
+      target: { value: "my thought" },
+    });
+    fireEvent.click(within(panel).getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByTestId("annotation-error")).toBeInTheDocument();
+    // The user's text isn't lost.
+    expect(within(panel).getByLabelText("Note")).toHaveValue("my thought");
+  });
+
+  it("surfaces an error when delete fails, keeping the panel open and the highlight present", async () => {
+    installAnnotationStore([
+      bsbAnnotation({ id: 5, char_start: 0, char_end: 7, note: null }),
+    ]);
+    server.use(
+      http.delete("/api/v1/annotations/:id", () =>
+        HttpResponse.json(
+          { detail: { code: "SERVER_ERROR", message: "boom" } },
+          { status: 500 },
+        ),
+      ),
+    );
+    renderReader();
+    await screen.findByTestId("verse-16");
+    await waitFor(() => expect(highlightSpan(5)).toBeInTheDocument());
+
+    fireEvent.mouseUp(highlightSpan(5)!);
+    const panel = await screen.findByTestId("annotation-panel");
+    fireEvent.click(within(panel).getByRole("button", { name: "Delete annotation" }));
+
+    expect(await screen.findByTestId("annotation-error")).toBeInTheDocument();
+    // No half-applied limbo: panel stays open, highlight remains.
+    expect(screen.getByTestId("annotation-panel")).toBeInTheDocument();
+    expect(highlightSpan(5)).toBeInTheDocument();
+  });
+
+  it("clears a stale error when a later mutation succeeds", async () => {
+    installAnnotationStore([
+      bsbAnnotation({ id: 5, char_start: 0, char_end: 7, color: "yellow", note: null }),
+    ]);
+    failPatch(); // PATCH fails; DELETE still succeeds via the store handler
+    renderReader();
+    await screen.findByTestId("verse-16");
+    await waitFor(() => expect(highlightSpan(5)).toBeInTheDocument());
+
+    fireEvent.mouseUp(highlightSpan(5)!);
+    const panel = await screen.findByTestId("annotation-panel");
+    fireEvent.click(within(panel).getByLabelText("Set color Green"));
+    expect(await screen.findByTestId("annotation-error")).toBeInTheDocument();
+
+    // A successful delete clears the lingering error (and removes the highlight).
+    fireEvent.click(within(panel).getByRole("button", { name: "Delete annotation" }));
+    await waitFor(() => expect(highlightSpan(5)).not.toBeInTheDocument());
+    expect(screen.queryByTestId("annotation-error")).not.toBeInTheDocument();
+  });
+});

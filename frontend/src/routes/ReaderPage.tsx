@@ -20,6 +20,7 @@ import {
 } from "@/hooks/useAnnotations";
 import { AnnotationPanel } from "@/components/reader/AnnotationPanel";
 import { ReaderPanelShell } from "@/components/reader/ReaderPanelShell";
+import { ApiError } from "@/lib/apiError";
 import {
   readFontSize,
   readLastLocation,
@@ -247,6 +248,18 @@ function ReaderInner({
     setPanel({ kind: "note", note });
   }
 
+  // Mutation error feedback (5c-6): create/color/note/delete are refetch-not-
+  // optimistic, so a failure leaves the server state (and, after refetch, the UI)
+  // coherent — we just need to TELL the user. Surface the first errored mutation
+  // in a dismissible banner; dismiss resets them so it clears.
+  const annotationError =
+    createHighlight.error ?? updateHighlight.error ?? deleteHighlight.error;
+  function dismissAnnotationError(): void {
+    createHighlight.reset();
+    updateHighlight.reset();
+    deleteHighlight.reset();
+  }
+
   function handleVerseClick(verse: VerseResponse, paneCode?: string): void {
     const code = paneCode ?? translationCode;
     navigate("/entries/new", {
@@ -335,6 +348,30 @@ function ReaderInner({
         onCompare={handleCompare}
       />
 
+      {annotationError && (
+        <div
+          role="alert"
+          data-testid="annotation-error"
+          className="flex items-start justify-between gap-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200"
+        >
+          <span>
+            Couldn’t save your highlight change
+            {annotationError instanceof ApiError && annotationError.message
+              ? `: ${annotationError.message}`
+              : "."}{" "}
+            Please try again.
+          </span>
+          <button
+            type="button"
+            onClick={dismissAnnotationError}
+            aria-label="Dismiss error"
+            className="shrink-0 rounded px-1.5 text-rose-700 hover:bg-rose-100 dark:text-rose-300 dark:hover:bg-rose-900/40"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {isCompareMode ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <ChapterPane
@@ -396,7 +433,11 @@ function ReaderInner({
                 highlightRange={highlightRange}
                 onVerseClick={(v) => handleVerseClick(v)}
                 annotations={chapterAnnotations}
-                onCreateHighlight={(input) => createHighlight.mutate(input)}
+                onCreateHighlight={(input) =>
+                  createHighlight.mutate(input, {
+                    onSuccess: dismissAnnotationError,
+                  })
+                }
                 onOpenAnnotations={handleOpenAnnotations}
                 onOpenNote={handleOpenNote}
               />
@@ -414,14 +455,28 @@ function ReaderInner({
                   )
                 }
                 onChangeColor={(id, color) =>
-                  updateHighlight.mutate({ annotationId: id, body: { color } })
+                  updateHighlight.mutate(
+                    { annotationId: id, body: { color } },
+                    { onSuccess: dismissAnnotationError },
+                  )
                 }
                 onSaveNote={(id, note) =>
-                  updateHighlight.mutate({ annotationId: id, body: { note } })
+                  updateHighlight.mutate(
+                    { annotationId: id, body: { note } },
+                    { onSuccess: dismissAnnotationError },
+                  )
                 }
                 onDelete={(id) => {
-                  deleteHighlight.mutate(id);
-                  setPanel(null);
+                  // Close only on success — a failed delete keeps the panel
+                  // open (and the highlight) so the user can retry; the error
+                  // banner explains. No half-applied limbo. Clear any stale
+                  // error from a prior failed mutation on success.
+                  deleteHighlight.mutate(id, {
+                    onSuccess: () => {
+                      dismissAnnotationError();
+                      setPanel(null);
+                    },
+                  });
                 }}
                 onClose={() => setPanel(null)}
               />

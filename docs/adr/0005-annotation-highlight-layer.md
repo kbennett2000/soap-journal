@@ -310,3 +310,48 @@ only on physical devices (checklist below), which gates closure.
 persists on reload; multi-verse touch-drag; plain tap → no popover, verse-number still creates an
 entry; tap a highlight / `+N` badge → panel + stack chooser; translation filter hides/shows; no ghost
 popover and dismissal works; portrait + landscape; dark mode.
+
+---
+
+## Cycle 5c-6 addendum — final polish (error feedback, popover clamp/flip, sheet focus)
+
+**Status:** Implemented (2026-06-02). The last cycle of ADR-0005; the annotation/highlight layer is
+now feature-complete.
+
+- **Mutation error feedback** (deferred the whole arc): create / color-PATCH / note-PATCH / delete
+  were refetch-not-optimistic with no failure surfacing. ReaderPage now shows a dismissible inline
+  `role="alert"` banner (`data-testid="annotation-error"`) when any of the three mutations errors —
+  consistent with the app's existing inline-alert pattern (ChapterError/EntryForm); no toast library
+  added. Because the mutations are refetch-not-optimistic, a failure leaves server + (post-refetch)
+  UI coherent — so there's no half-applied limbo: a failed color/note keeps the panel open with the
+  user's input intact; a **failed delete keeps the panel and highlight** (delete closes the panel
+  *only* on success). Each mutation's `onSuccess` clears any stale banner from a prior failure.
+- **Popover clamp/flip**: new pure `computePopoverPosition(rect, viewport, size)`
+  ([lib/popoverPosition.ts](frontend/src/lib/popoverPosition.ts)) — centered over the selection,
+  above with flip-below when there's no room, both axes clamped to the viewport — wired into the
+  create `SelectionPopover` so it's never off-screen. Unit-tested (the math, not pixels). (The
+  edit/note panel is shell-positioned since 5c-4, not popover-positioned, so only the create popover
+  needed this.)
+- **Mobile sheet focus management** (the 5c-4 MEDIUM): new `useMediaQuery`
+  ([hooks/useMediaQuery.ts](frontend/src/hooks/useMediaQuery.ts)); `ReaderPanelShell` applies proper
+  modal semantics **only when it's the bottom-sheet** (`< lg`): `role="dialog"`/`aria-modal`, focus
+  moves into the sheet on open, is trapped on Tab, and returns to the trigger on close; Escape closes
+  (still deferring to a native `<dialog>` like the delete-confirm). The desktop docked column is
+  unchanged — no modal semantics, no focus steal.
+
+**Coverage:** automated RTL/MSW — popover clamp/flip math (6 cases); `useMediaQuery`; sheet
+dialog-semantics + focus-in + focus-return + desktop-no-steal; mutation-error banner for color/note/
+delete failures incl. UI-coherence + dismiss + stale-clear-on-later-success. typecheck + lint + 258
+tests green. (Create-error shares the identical banner wiring but isn't separately integration-tested
+— triggering create needs a real browser selection, which has no injected-resolver seam at the
+ReaderPage level; the create flow itself is covered at the ChapterContent level.)
+
+**Stale-translation fallback (the "SB" reader-load fix):** confirmed shipped in the prior fix commit
+— the regression test "an unknown/stale translation code in the route falls back to a loaded
+translation" lives in `ReaderPage.test.tsx`. It was pre-existing for this cycle, not re-added.
+
+## ADR-0005 status: COMPLETE
+5a (backend) · 5b (single-verse create/render) · 5c-1 (multi-verse) · 5c-2 (overlap +N) ·
+5c-3 (edit panel) · 5c-4 (responsive shell + NoteView convergence) · 5c-5 (touch selection,
+device-verified) · 5c-6 (polish) all shipped. Deliberately out of scope (documented above):
+compare-pane highlights, markdown notes, drag-to-resize sheet, and an overlap stack-cycler.
