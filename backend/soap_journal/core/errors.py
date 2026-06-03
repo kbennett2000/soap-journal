@@ -21,6 +21,8 @@ class ErrorCode(StrEnum):
     ANNOTATION_NOT_FOUND = "ANNOTATION_NOT_FOUND"
     INVALID_BOOK = "INVALID_BOOK"
     INVALID_DATE_RANGE = "INVALID_DATE_RANGE"
+    INVALID_BACKUP = "INVALID_BACKUP"
+    BACKUP_VERSION_UNSUPPORTED = "BACKUP_VERSION_UNSUPPORTED"
 
 
 def raise_http(status: int, code: ErrorCode, message: str | None = None) -> NoReturn:

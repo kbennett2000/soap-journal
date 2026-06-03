@@ -89,6 +89,26 @@ def _parse_instant(value: str) -> datetime:
     return _normalize(datetime.fromisoformat(value.replace("Z", "+00:00")))
 
 
+def validate_backup_dates(document: BackupDocument) -> list[str]:
+    """Return human-readable errors for any unparseable date/timestamp.
+
+    The backup schema types ``entry_date``/``created_at``/``updated_at`` as plain
+    ``str`` (the export schema stays as lenient as the phone's Zod), so a
+    structurally-valid file can still carry a value that would ``ValueError``
+    mid-engine. The import endpoint calls this up front so ``import_backup`` only
+    ever runs on fully-valid input. Pure — no DB.
+    """
+    errors: list[str] = []
+    for index, entry in enumerate(document.entries):
+        try:
+            date.fromisoformat(entry.entry_date)
+            _parse_instant(entry.created_at)
+            _parse_instant(entry.updated_at)
+        except ValueError:
+            errors.append(f"entry {index} has an invalid date or timestamp")
+    return errors
+
+
 async def _resolve_verse_ids(
     db: AsyncSession, translation_id: int, coords: list[tuple[int, int, int]]
 ) -> list[int]:
@@ -136,6 +156,11 @@ def _choose_match(bucket: list[_Candidate], scripture_ref: str) -> _Candidate | 
     0 candidates -> no match (INSERT). Exactly 1 -> that one, ignoring ref (so a
     ref edit updates in place). >1 -> the one whose ref also matches, else no
     match (never guess — a duplicate beats a destructive merge).
+
+    Assumes distinct entries never share an exact created_at (it is the immutable
+    dedup key). Within a single file, two entries that DO share a created_at
+    collapse via last-write-wins: the bucket already holds the 1st when the 2nd is
+    processed, so the 2nd matches and updates in place.
     """
     if not bucket:
         return None

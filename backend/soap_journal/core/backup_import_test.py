@@ -425,6 +425,44 @@ async def test_collision_non_matching_ref_inserts(
     assert len(await _entries(db_session, user_id)) == 3
 
 
+# ---- within-one-file same created_at (pins the _choose_match assumption) ----
+
+
+async def test_within_one_file_same_created_at_collapses_lww(
+    bsb_loaded: None, db_session: AsyncSession
+) -> None:
+    # Two entries in ONE file sharing an exact created_at (impossible in practice,
+    # since created_at is the immutable dedup key, but real if hand-crafted). The
+    # in-memory bucket holds the 1st when the 2nd is processed, so they collapse
+    # via last-write-wins rather than both inserting.
+    user_id = await _make_user(db_session)
+    created = datetime(2026, 1, 15, 12, 0, 0, tzinfo=UTC)
+    doc = _doc(
+        _file_entry(
+            created_at=created,
+            updated_at=datetime(2026, 1, 16, 0, 0, 0, tzinfo=UTC),
+            scripture_ref="John 3:16",
+            title="first",
+            verses=[JOHN_3_16],
+        ),
+        _file_entry(
+            created_at=created,  # identical
+            updated_at=datetime(2026, 2, 1, 0, 0, 0, tzinfo=UTC),  # newer -> wins
+            scripture_ref="Romans 8:28",
+            title="second",
+            verses=[ROM_8_28],
+        ),
+    )
+
+    report = await import_backup(db_session, user_id, doc)
+    assert (report.inserted, report.updated, report.total_in_file) == (1, 1, 2)
+
+    entries = await _entries(db_session, user_id)
+    assert len(entries) == 1  # collapsed, not duplicated
+    assert entries[0].title == "second"
+    assert entries[0].scripture_ref == "Romans 8:28"
+
+
 # ---- MISSING TRANSLATION ---------------------------------------------------
 
 
