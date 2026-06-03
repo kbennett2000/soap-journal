@@ -163,8 +163,9 @@ A `.env` file at the repo root, generated from `.env.example` on first run. Keys
 - `PORT` — host-side port Compose maps to the container's internal `8080`; this is what you browse to, not the port the server itself binds. Default `8045`.
 - `DATA_DIR` — absolute or relative path to the data directory. Default `./data`.
 - `SECRET_KEY` — used for session signing. Generated on first run if absent.
-- `OPEN_REGISTRATION` — `true` / `false`. Admin can also toggle at runtime.
 - `BIND_HOST` — default `0.0.0.0` so LAN access works.
+
+Self-registration is **not** an env var: it's a DB-seeded setting (default "closed") that the admin toggles at runtime via the admin API (`PUT /api/v1/admin/settings`) after the first user signs up.
 
 ## 7. Deployment
 

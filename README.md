@@ -196,7 +196,8 @@ cd ../frontend
 npm ci
 npm run build
 
-# Run (backend serves the built frontend)
+# Run (backend serves the built frontend).
+# Change --port to serve on a different port (the Docker path uses PORT in .env).
 cd ../backend
 FRONTEND_DIST_DIR=../frontend/dist DATA_DIR=./data \
     uvicorn soap_journal.main:create_app --factory --host 0.0.0.0 --port 8045
