@@ -6,6 +6,12 @@ the **Berean Standard Bible (BSB)**, the **King James Version (KJV)**, the
 They're all loaded automatically when the container first boots. The
 reader is the screen for actually reading them.
 
+You can also add the **NET Bible** (New English Translation) — see
+[Adding a Bible translation](../../README.md#adding-a-bible-translation).
+NET is the one translation that carries inline **translator's notes** and
+**cross-references**; once it's loaded, the reader shows them (see
+[Translator's notes](#translators-notes-and-cross-references) below).
+
 Open it from the dashboard's **Open the reader →** button, by typing a
 reference into the jump bar, or by clicking the soap-journal title and
 then navigating from there.
@@ -86,6 +92,67 @@ Two settings, both saved per-device in your browser:
 Section headings (like *"The Visit of Nicodemus"* before John 3) come
 from the translation. They're not part of the inspired text — they're
 editorial signposts that help you find your place.
+
+## Translator's notes and cross-references
+
+When you're reading a translation that carries translator's notes — the
+**NET Bible** — small superscript markers appear inline in the verse text
+at the spot each note applies to. (The bundled public-domain translations
+have no such notes, so you won't see markers there.)
+
+Click a marker to open the note. It shows:
+
+- The note's **type** — Translator's Note, Study Note, Text-Critical
+  Note, or Map.
+- The note **body**.
+- Any **cross-references** the note makes — each is a link like
+  *John 1:1*. Click one to jump straight to that passage in the reader
+  (it opens with the cited verses highlighted, just like the jump bar).
+
+Clicking a marker only opens its note — it doesn't start a new entry the
+way clicking the verse number does.
+
+## Highlighting verses
+
+Select any run of verse text with your mouse (or by dragging on a
+touchscreen) and a small color palette pops up. Pick one of six colors
+and that text is highlighted. A highlight can:
+
+- **Span multiple verses** within a chapter — drag across as many as you
+  like.
+- **Overlap** other highlights. Where highlights stack, the most recent
+  color shows and a small **+N** badge marks how many others are
+  underneath.
+- Carry an **optional note** — a private plain-text comment attached to
+  the highlight.
+
+To change or remove a highlight, **click it**. An annotation panel opens
+(a side panel on desktop, a slide-up sheet on phones) where you can pick
+a different color, type or edit the note, or **delete** the highlight.
+Deleting one that has a note asks you to confirm first.
+
+Highlights are **per translation**: a highlight you make while reading NET
+shows only in NET, not in BSB or KJV, because it's pinned to the exact
+wording you highlighted. Switch translations and it quietly hides; switch
+back and it returns.
+
+> The verse **number** is still the "start a new journal entry" control —
+> tap it (it's an easy target on touch) to open the entry form. Selecting
+> text is for highlighting; tapping the number is for journaling.
+
+## Searching scripture
+
+The **🔍 Search Scripture** button in the controls bar opens a search over
+the **Bible text itself** — verse text and (for NET) translator's notes.
+This is different from the search on the entries list, which searches
+*your journal* ([chapter 5](05-finding-entries.md)).
+
+- Results come back as two lists: **verse** matches and **note** matches,
+  each with the matched words highlighted and a link into the reader.
+- By default it searches the **current translation**. Switch it to **All**
+  to search every loaded translation at once; cross-translation verse
+  matches are grouped so a verse shows once with the translations that
+  matched it.
 
 ## Highlighted verses after a jump
 

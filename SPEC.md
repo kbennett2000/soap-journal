@@ -46,10 +46,13 @@ Each entry has:
 - Click any verse to start a new SOAP entry pre-filled with that reference.
 - **Side-by-side translation comparison**: active by default, since multiple translations are bundled and loaded on first run. (The UI still falls back to a disabled affordance if an instance somehow has only one translation loaded.)
 - **Cross-reference from passage to entries**: when reading a chapter, the UI shows "you have N journal entries on this passage" with links to those entries.
+- **Translator's notes and cross-references** (notes-bearing translations, i.e. NET): inline superscript markers mark each typed note at its position in the verse — translator (`tn`), study (`sn`), text-critical (`tc`), and map (`map`). Clicking a marker opens the note (its type label + body) with tappable **cross-reference links** that navigate to the cited passage. Plain translations show no markers and read exactly as before.
+- **Scripture full-text search**: a dedicated "Search Scripture" surface searches verse text and translator's notes — within one translation, or across **all** loaded translations grouped to one row per canonical verse. Distinct from journal-entry search (§3.3); the two are never merged.
+- **Highlights / annotations**: select verse text to highlight it in one of six colors. A highlight can **span multiple verses** within a chapter, **overlap** other highlights (shown with a "+N" indicator), and carry an optional plain-text **note**. Change color, edit the note, or delete from an **annotation panel** — a docked side-panel on desktop, a slide-up bottom-sheet on mobile (touch selection supported). A highlight is **visible only in the translation it was made in** (its character offsets are meaningless against differently-worded text).
 
 ### 3.3 Retrieval and Discovery
 
-- **Keyword search** across the user's entries (title, observation, application, prayer, scripture text).
+- **Keyword search** across the user's entries (title, observation, application, prayer, scripture text). This is journal-entry search; **scripture full-text search** over verses + translator's notes is a separate reader feature (§3.2).
 - **Filter** by book, passage, and/or tag.
 - **Calendar view** of entries by month.
 - **"On this day in previous years"** — surface entries from the same date in prior years.
@@ -78,7 +81,9 @@ After login, the user lands on a **dashboard** showing:
 
 v1 bundles **13 public-domain translations**, all parsed and loaded automatically on first run: BSB plus 12 PDFMaker-format translations (KJV, AKJV, ASV, CPDV, DBT, DRB, ERV, JPS, SLT, WBT, WEB, YLT).
 
-The parser architecture is designed so more translations can be added over time without shipping their text in the repo. Parsers for three copyrighted translations (ESV, NKJV, NLT) are included, but the repo ships no copyrighted text — a user supplies their own legally-obtained PDF via the gitignored `bibles/` directory and parses it locally.
+The parser architecture is designed so more translations can be added over time without shipping their text in the repo. Parsers for four user-supplied translations are included — three copyrighted (ESV, NKJV, NLT) plus **NET** (New English Translation) — but the repo ships no such text: a user supplies their own legally-obtained PDF via the gitignored `bibles/` directory and parses it locally.
+
+**NET is distinctive.** Unlike every bundled translation, NET carries tens of thousands of **typed translator's notes** (`tn/sn/tc/map`), each anchored to a character offset in its verse, many with **cross-references** to other passages. The reader surfaces all of it (§3.2). Loading NET is what makes the notes/cross-references and notes-aware scripture search visible on an instance. Per-translation build/load steps for NET (and ESV/NKJV/NLT) are in `bibles/README.md`.
 
 ### 4.2 Canonical format
 
@@ -110,7 +115,7 @@ A normalized JSON schema for Bible text. Roughly:
 }
 ```
 
-The schema must accommodate (at minimum): section headings, footnotes, and a red-letter flag per verse. Schema lives in `backend/soap_journal/parsers/schema.py` and is the single source of truth.
+The schema must accommodate (at minimum): section headings; footnotes — optionally **typed** (`tn/sn/tc/map`), anchored to a character offset within the verse, and carrying **cross-references** to other passages (used by NET; plain translations leave these fields unset); and a red-letter flag per verse. Schema lives in `backend/soap_journal/parsers/schema.py` and is the single source of truth.
 
 ### 4.3 Parsers
 
@@ -143,7 +148,9 @@ Two parser kinds cover the 13 bundled translations. BSB ingests a clean tab-sepa
 - `chapters` — id, book_id, number.
 - `verses` — id, chapter_id, number, text, is_red_letter.
 - `headings` — id, chapter_id, before_verse, text.
-- `footnotes` — id, verse_id, marker, text.
+- `footnotes` — id, verse_id, marker, text, `note_type`, `char_offset`, `ordinal` (the typed/anchored note fields are NULL for the plain translations; populated for NET).
+- `cross_references` — id, footnote_id, to_book_id, to_chapter, to_verse_start, to_verse_end (a note's links to other passages; the source verse is derived from the footnote).
+- `annotations` — id, user_id, translation_code, book, chapter, verse_start, verse_end, char_start, char_end, color, note, created_at, updated_at (per-user highlights). Anchored by **canonical coordinates + translation code**, deliberately **not** by `verses.id`/`translations.id` foreign keys, so a translation reload (delete+insert) can't orphan a user's highlights. Searchable verse/note text is mirrored into FTS5 tables (`verses_fts`, `notes_fts`) maintained by the loader.
 - `entries` — id, user_id, title, entry_date, scripture_ref, scripture_translation_id, observation, application, prayer, created_at, updated_at.
 - `entry_scripture_verses` — junction so an entry can be linked to specific verses for cross-reference lookups (entry_id, verse_id).
 - `tags` — id, user_id, name (unique per user).
@@ -170,7 +177,7 @@ A `.env` file at the repo root, generated from `.env.example` on first run. Keys
 (Mirrors `CLAUDE.md` — kept here for the human-facing spec.)
 
 - Reading plans
-- Bookmarks / highlights
+- Bookmarks (navigational markers). **Verse highlights are built** — see §3.2 — and are no longer out of scope.
 - Export to Markdown / PDF / zip
 - Built-in backups (users copy the data folder)
 - Random entry / rediscover
@@ -179,7 +186,8 @@ A `.env` file at the repo root, generated from `.env.example` on first run. Keys
 - Native mobile apps
 - Audio Bible, commentary, original-language tools
 - Outbound internet calls of any kind at runtime
-- Copyrighted translations shipping in the repo (parsers for ESV/NKJV/NLT are included, but users supply their own PDFs; only public-domain translations are bundled)
+- Copyrighted / restricted translations shipping in the repo (parsers for ESV/NKJV/NLT **and NET** are included, but users supply their own PDFs; only the 13 public-domain translations are bundled)
+- Refinements within the now-built highlight layer that remain deferred: highlights in the side-by-side **compare** view, **Markdown** formatting in highlight notes, a **drag-to-resize** mobile sheet, and a chooser to cycle through every annotation beneath a "+N" **overlap** stack (clicking a stack opens the top one).
 
 ## 9. Future Considerations
 
@@ -187,6 +195,6 @@ Not commitments — just things the architecture should not preclude:
 
 - Additional translations via new parsers (already designed in).
 - Reading plans (would add a `plans` and `plan_progress` table).
-- Highlights and bookmarks (would add a `highlights` table linked to verses).
+- Bookmarks (quick navigational markers). Verse **highlights** are now built (the `annotations` table, §5); bookmarks are a separate, still-future idea.
 - Export and import (data is already in a single folder, so a "download zip" is straightforward).
 - Group / shared journals (would require a new permissions layer; intentionally not designed in for v1).

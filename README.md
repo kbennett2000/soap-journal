@@ -24,12 +24,15 @@ A self-hosted, offline-first SOAP (Scripture, Observation, Application, Prayer) 
 ## Features
 
 - SOAP-method journaling with auto-pulled Scripture text
-- Built-in Bible reader (BSB and KJV bundled; more translations via a parser architecture)
+- Built-in Bible reader — 13 public-domain translations bundled, side-by-side compare, jump bar, verse/paragraph layouts
+- Optional **NET Bible** with inline translator's notes (translator/study/text-critical/map) and tappable cross-reference navigation
+- **Verse highlights** in six colors — span multiple verses, overlap, carry an optional note; edit or delete from a panel (desktop) or bottom-sheet (mobile); a highlight shows only in the translation it was made in
+- **Scripture full-text search** over verse text and translator's notes (one translation or all of them) — separate from journal-entry search
 - Multi-user with simple username/password auth — admin can manage accounts
 - Search, tag, filter, and calendar view of your entries
 - "On this day in previous years" surfacing
 - Cross-reference from any passage back to entries you've written on it
-- Responsive UI that works on mobile and desktop browsers
+- Responsive UI for mobile and desktop, including touch text-selection for highlighting
 - Light and dark themes
 - 100% offline once installed — no telemetry, no external API calls
 
@@ -118,9 +121,17 @@ is already loaded, only the missing ones are parsed.
 
 ## Adding a Bible Translation
 
-Beyond the 13 bundled translations, parsers are included for three popular
-copyrighted translations you can add if you have your own copy of the PDF:
-**NKJV**, **ESV**, and **NLT**.
+Beyond the 13 bundled translations, parsers are included for four
+user-supplied translations you can add if you have your own copy of the
+source: three copyrighted — **NKJV**, **ESV**, **NLT** — and the **NET**
+(New English Translation). The repo ships none of this text.
+
+**NET is special:** it carries the NET's extensive **translator's notes**
+(typed translator/study/text-critical/map) and **cross-references**, which
+the reader renders inline and which scripture search can search. Loading
+NET is what lights up the notes/cross-reference features. Its full
+build/load walkthrough (a large two-column PDF) is in
+[`bibles/README.md`](bibles/README.md).
 
 Drop the PDF into the gitignored `bibles/` directory, then build and load
 it inside the running container. `./bibles` is bind-mounted to
@@ -146,8 +157,8 @@ If you'd rather run the steps separately, the parser
 `validate-translation <path.json>` are still available; `build-translation`
 simply composes the two.
 
-Step-by-step instructions for each of NKJV, ESV, and NLT — including the
-source format each expects and per-translation caveats — are in
+Step-by-step instructions for each of NKJV, ESV, NLT, and NET — including
+the source format each expects and per-translation caveats — are in
 [`bibles/README.md`](bibles/README.md). The side-by-side comparison view
 is active out of the box (13 translations ship by default).
 
@@ -193,7 +204,9 @@ FRONTEND_DIST_DIR=../frontend/dist DATA_DIR=./data \
 
 ## Development
 
-See `SPEC.md` for the full specification and `CLAUDE.md` for engineering conventions.
+See `SPEC.md` for the full specification, `CLAUDE.md` for engineering
+conventions, and [`docs/adr/`](docs/adr/README.md) for the design history
+(the architecture decision records, indexed).
 
 ```bash
 # Backend (auto-reload, no static frontend mount in this mode)
@@ -209,6 +222,11 @@ cd frontend
 npm install
 npm run dev
 ```
+
+Tests: `cd backend && pytest` runs the fast suite (real full-PDF parses are
+marked `slow` and excluded by default; run everything with
+`pytest -m "slow or not slow"`), and `cd frontend && npm run test` runs the
+Vitest suite. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full loop.
 
 ## Contributing
 

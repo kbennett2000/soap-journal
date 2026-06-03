@@ -9,11 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Verse highlights / annotations.** Select verse text to highlight it in one of
+  six colors; highlights can span multiple verses, overlap (shown with a `+N`
+  badge), and carry an optional plain-text note. Edit color/note or delete from an
+  annotation panel — a docked side-panel on desktop, a slide-up bottom-sheet on
+  mobile — with touch text-selection supported. A highlight is visible only in the
+  translation it was made in. Backed by a user-scoped annotations CRUD API
+  (anchored by canonical coordinates + translation code, not verse/translation
+  foreign keys, so a translation reload can't orphan highlights).
+- **Scripture full-text search.** A "Search Scripture" surface searches verse text
+  and translator's notes via SQLite FTS5 — one translation, or all loaded
+  translations grouped to one row per canonical verse — kept distinct from the
+  existing journal-entry keyword search.
+- **NET Bible support with translator's notes and cross-references.** A NET parser
+  (`python -m soap_journal.parsers.net`), an enriched canonical schema + data model
+  carrying typed notes (`tn/sn/tc/map`, character-anchored, with cross-references)
+  and a `cross_references` table, a read API that returns them inline per verse, and
+  a reader that renders inline note markers + tappable cross-reference navigation.
+  NET text is user-supplied (not bundled); see `bibles/README.md`.
+- Reader resilience: an unknown or stale translation code in the URL now falls back
+  to a loaded translation instead of a dead "unable to load" screen.
 - `build-translation` CLI subcommand
   (`python -m soap_journal.cli build-translation --code ESV <source> [--out <path>]`)
   that parses a Bible source file and validates the result against the canonical
   schema in one step, writing the output only if validation passes. Collapses the
-  former parse-then-validate flow into a single command for any of the 16
+  former parse-then-validate flow into a single command for any of the 17
   supported translation codes; touches no database.
 - `validate-translation` CLI subcommand
   (`python -m soap_journal.cli validate-translation <path.json>`) that checks a
