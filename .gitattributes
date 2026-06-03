@@ -1,0 +1,22 @@
+# Keep line endings consistent on every platform.
+#
+# soap-journal runs inside a Linux container even on Windows and macOS
+# (Docker Desktop runs a Linux VM). The container's bash entrypoint must have
+# LF line endings or it won't boot. Git for Windows defaults to
+# core.autocrlf=true, which would rewrite scripts/docker-entrypoint.sh to CRLF
+# on clone and break the container with a cryptic "bad interpreter" error.
+# Forcing LF here removes that whole class of problem for non-technical users.
+
+# Normalize text files to LF in the repo and on checkout, on every OS.
+* text=auto eol=lf
+
+# Shell scripts MUST stay LF or the Docker entrypoint won't start.
+*.sh text eol=lf
+
+# Binary assets — never normalize.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

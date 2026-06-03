@@ -7,11 +7,11 @@
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 ![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
 
-A self-hosted, offline-first SOAP (Scripture, Observation, Application, Prayer) journaling app with an integrated Bible reader. Designed to run on a home Ubuntu server over your local LAN — no internet required after install.
+A self-hosted, offline-first SOAP (Scripture, Observation, Application, Prayer) journaling app with an integrated Bible reader. It runs on **Windows, Mac, or Linux** with Docker — perfect on a dedicated home server over your LAN, and just as happy on the computer you use every day. No internet required after install.
 
 **Status:** in development. Not yet released.
 
-> **New to self-hosting?** The [full install guide](docs/install/README.md) walks through every step on a fresh Ubuntu Server — Docker setup, configuration, first login — with screenshots. The Quick Start below assumes you've done this before.
+> **New here?** The [install guide](docs/install/README.md) has a friendly, step-by-step walkthrough for **Windows**, **Mac**, and **Ubuntu/Linux servers** — Docker setup, configuration, first login — with screenshots. The Quick Start below assumes you're comfortable with Docker already.
 
 ![Dashboard showing recent entries and the "On this day in previous years" panel](docs/screenshots/usage-dashboard-populated.png)
 
@@ -38,24 +38,23 @@ A self-hosted, offline-first SOAP (Scripture, Observation, Application, Prayer) 
 
 ## Requirements
 
-- Ubuntu (or any Linux that runs Docker)
-- Docker and Docker Compose
-- ~1 GB disk for the app and bundled Bible text
+- **Windows, Mac, or Linux** with [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac) or Docker Engine + Compose (Linux)
+- ~1 GB disk on Linux for the app and bundled Bible text; ~4 GB on Windows/Mac (Docker Desktop itself is larger)
 
 ## Quick Start
 
 ```bash
 git clone https://github.com/kbennett2000/soap-journal.git
 cd soap-journal
-cp .env.example .env
+cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
 docker compose up -d
 ```
 
-Open `http://<your-server-ip>:8045` from any device on your LAN. The first user to register becomes the admin.
+On the machine running it, open `http://localhost:8045`. From other devices on your LAN, use that machine's IP, e.g. `http://192.168.1.50:8045`. The first user to register becomes the admin.
 
 **What you get out of the box:** on first start, the server loads 13 public-domain Bible translations automatically: BSB, KJV, AKJV, ASV, CPDV, DBT, DRB, ERV, JPS, SLT, WBT, WEB, and YLT. The side-by-side translation comparison view is active from the start. First boot takes several minutes while translations are parsed and loaded; subsequent restarts are fast.
 
-For a step-by-step walkthrough — installing Docker, finding your server's IP, first login — see the [install guide](docs/install/README.md). For everything else (the reader, journaling, tags, search, calendar, admin tasks, backups) see the [usage guide](docs/usage/README.md).
+For a step-by-step walkthrough — installing Docker, configuration, first login — pick your platform in the [install guide](docs/install/README.md) ([Windows](docs/install/windows.md), [Mac](docs/install/macos.md), [Ubuntu/Linux server](docs/install/ubuntu-server.md)). For everything else (the reader, journaling, tags, search, calendar, admin tasks, backups) see the [usage guide](docs/usage/README.md).
 
 ## Configuration
 
@@ -90,7 +89,7 @@ Everything you care about lives in `./data` on the host. Stop the container, cop
 The most common issues are covered in [`docs/install/troubleshooting.md`](docs/install/troubleshooting.md). The greatest hits:
 
 - **Port already in use** — change `PORT` in `.env` (e.g. `PORT=9090`) and `docker compose up -d`. The container always binds 8080 internally; Compose maps that to whatever host port you choose.
-- **Permission errors on `./data`** — the container runs as UID 1000. If your host UID differs and you've bind-mounted an existing `./data`, run `sudo chown -R 1000:1000 ./data` once.
+- **Permission errors on `./data`** (Linux only) — the container runs as UID 1000. If your host UID differs and you've bind-mounted an existing `./data`, run `sudo chown -R 1000:1000 ./data` once. On Docker Desktop (Windows/Mac) this doesn't apply — the file sharing layer handles ownership.
 - **Viewing logs** — `docker compose logs -f` (or `docker compose logs --tail=100 soap-journal`).
 - **Forgot the admin password** — see [Forgot the admin password](docs/install/troubleshooting.md#i-forgot-the-admin-password).
 - **Want HTTPS?** v1 ships HTTP only on the assumption you're on a trusted LAN. Run a reverse proxy (Caddy, nginx, Traefik) in front of the container yourself — first-class HTTPS is a v2 topic.
@@ -168,10 +167,13 @@ public domain or permissively licensed; many modern translations (ESV,
 NIV, NASB, etc.) are not. Loading a copyrighted translation onto a server
 you control for personal use is between you and the publisher.
 
-## Manual install (without Docker)
+## Manual install without Docker (Linux / macOS)
 
 Docker is the recommended path. If you can't or won't run Docker, you can
-install the pieces directly:
+install the pieces directly. The commands below are for Linux and macOS;
+Windows users without Docker should follow the
+[advanced Windows guide](docs/install/windows-manual.md) (PowerShell
+equivalents).
 
 ```bash
 # Backend

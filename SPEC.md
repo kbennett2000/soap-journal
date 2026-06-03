@@ -6,7 +6,7 @@
 
 ### Core constraints
 
-- Runs on Ubuntu, served over a local LAN.
+- Runs anywhere Docker does — a dedicated Ubuntu/Linux server on a LAN is the primary design target, and Docker Desktop on Windows or macOS is a supported install too.
 - After installation and initial configuration, operates **100% offline** with no internet calls.
 - Port is configurable via environment variable.
 - Multi-user, with auth and per-user private journals.
@@ -171,7 +171,9 @@ Self-registration is **not** an env var: it's a DB-seeded setting (default "clos
 
 - Single `docker compose up` brings up the app.
 - The Compose file mounts `./data` as a volume and reads from `.env`.
+- Supported on Linux (Docker Engine) and on Windows/macOS (Docker Desktop, which runs the same Linux image inside its VM — the bash entrypoint, `gosu`, and `chown` all run inside the container regardless of host OS). A dedicated Linux server on a LAN remains the primary target. Per-platform install guides live in `docs/install/`.
 - A non-Docker install path (manual `pip install -r requirements.txt` + `npm run build` + `uvicorn`) is documented but Docker is the recommended path.
+- A `.gitattributes` forces LF line endings so the container entrypoint is never CRLF-corrupted by a Windows clone; the Dockerfile also strips stray CRs as a safety net.
 
 ## 8. Out of Scope for v1
 

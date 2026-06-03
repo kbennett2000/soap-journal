@@ -2,12 +2,14 @@
 
 Two paths through these docs, depending on what you came here to do.
 
-## I want to install soap-journal on my server
+## I want to install soap-journal
 
-Start with the [install guide](install/README.md). It walks through
-every step from "I have an Ubuntu Server, what now?" to "I'm logged
-in as the admin," explaining every command and showing screenshots of
-every screen.
+Start at the [install hub](install/README.md) and pick the guide for your
+computer — **Windows**, **Mac**, or a dedicated **Linux / Ubuntu server**.
+Each one walks through every step from "I just downloaded this, what now?"
+to "I'm logged in as the admin," explaining every command and showing
+screenshots of every screen. soap-journal runs the same on all three; only
+the setup steps differ.
 
 If you hit a problem along the way, check
 [install troubleshooting](install/troubleshooting.md).
@@ -22,10 +24,17 @@ the calendar, admin tasks, and backups.
 
 ## What's in here
 
-- [`install/README.md`](install/README.md) — the full Ubuntu Server
-  install walkthrough.
+- [`install/README.md`](install/README.md) — the install hub; pick your
+  platform here.
+- [`install/windows.md`](install/windows.md) — install on a Windows PC with
+  Docker Desktop (plus an [advanced no-Docker guide](install/windows-manual.md)).
+- [`install/macos.md`](install/macos.md) — install on a Mac with Docker
+  Desktop.
+- [`install/ubuntu-server.md`](install/ubuntu-server.md) — the full
+  walkthrough for a dedicated Ubuntu/Linux home server.
 - [`install/troubleshooting.md`](install/troubleshooting.md) —
-  symptoms, diagnoses, and fixes for install-time problems.
+  symptoms, diagnoses, and fixes for install-time problems (with a
+  Windows & Mac section).
 - [`usage/`](usage/) — the end-user usage guide, in nine chapters.
 - [`screenshots/`](screenshots/) — the PNG screenshots embedded in
   every doc. Captured from a real running instance by the script at

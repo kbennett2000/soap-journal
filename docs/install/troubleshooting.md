@@ -6,6 +6,91 @@ commands to diagnose and fix each one.
 If your problem isn't here, open an issue with as much detail as you
 can: <https://github.com/kbennett2000/soap-journal/issues>.
 
+> **A note on the commands below.** The diagnostic commands in this guide
+> are written for a Linux server. They work the same inside Docker on
+> Windows and Mac, but a few host-side commands differ — those are called
+> out in the **Windows & Mac** section just below. The Windows and Mac
+> install guides ([Windows](windows.md), [Mac](macos.md)) point you here
+> when something goes wrong.
+
+---
+
+## Windows & Mac (Docker Desktop)
+
+These cover the issues specific to running soap-journal with Docker
+Desktop on a personal computer. (The rest of this page assumes a Linux
+server, but the `docker compose ...` commands are identical everywhere.)
+
+### "docker: command not found" or "the term 'docker' is not recognized"
+
+Docker Desktop isn't running, or your terminal was open before it
+finished starting.
+
+1. Open **Docker Desktop** (Start menu on Windows, Applications on Mac).
+2. Wait for the **whale icon** (system tray on Windows, menu bar on Mac)
+   to stop animating and sit still — that means the engine is ready.
+3. Close your terminal and open a fresh one, then try again.
+
+soap-journal only runs while Docker Desktop is running. By default Docker
+Desktop starts when you log in; if you've turned that off, you'll need to
+open it before starting soap-journal.
+
+### "Cannot connect to the Docker daemon" / "The system cannot find the file specified"
+
+Same cause as above — the Docker engine isn't up yet. Start Docker
+Desktop, wait for the whale to settle, and re-run `docker compose up -d`.
+
+### Other devices on my network can't reach soap-journal (Windows)
+
+`http://localhost:8045` works on the PC itself, but your phone or another
+computer can't open `http://<pc-ip>:8045`.
+
+1. **Use the right address.** On the PC, run `ipconfig` in PowerShell and
+   use the **IPv4 Address** under your active Wi-Fi/Ethernet adapter (e.g.
+   `192.168.1.50`). `localhost` and `127.0.0.1` only work on the PC itself.
+2. **Allow it through the Windows firewall.** The first time soap-journal
+   started, Windows may have shown a **Windows Defender Firewall** prompt;
+   if you dismissed it (or clicked Cancel), other devices are blocked. The
+   simplest fix is to start fresh so the prompt reappears: run
+   `docker compose down` then `docker compose up -d`, and click **Allow
+   access** when the prompt shows. Make sure **Private networks** is
+   checked.
+3. **Confirm both devices are on the same network.** A phone on cellular
+   data, or on a "Guest" Wi-Fi network, can't reach your PC. Put both on
+   the same home Wi-Fi.
+
+### Other devices on my network can't reach soap-journal (Mac)
+
+1. **Use the right address.** On the Mac, run `ipconfig getifaddr en0` in
+   Terminal (or check **System Settings → Wi-Fi → Details… → IP Address**)
+   and use that, e.g. `192.168.1.50`. `localhost` only works on the Mac
+   itself.
+2. **Check the macOS firewall.** Open **System Settings → Network →
+   Firewall**. If it's on, either turn it off on your trusted home network,
+   or make sure incoming connections to Docker aren't blocked.
+3. **Same network?** Make sure the other device is on the same home Wi-Fi,
+   not cellular data or a guest network.
+
+### Port 8045 is already in use (Windows / Mac)
+
+You saw `Bind for 0.0.0.0:8045 failed: port is already allocated`.
+
+The easy fix is the same on every platform: open `.env`, change
+`PORT=8045` to an unused number like `PORT=8055`, save, and run
+`docker compose up -d` again. Then open `http://localhost:8055`.
+
+To find what's already using the port first:
+
+- **Windows (PowerShell):** `Get-Process -Id (Get-NetTCPConnection -LocalPort 8045).OwningProcess`
+- **Mac (Terminal):** `lsof -i :8045`
+
+### Where do I run these commands?
+
+In the terminal, **inside the soap-journal folder** — the one containing
+`docker-compose.yml`. On Windows that's **PowerShell**; on Mac it's
+**Terminal**. If `docker compose` reports it can't find a compose file,
+you're in the wrong folder — `cd` into the soap-journal folder first.
+
 ---
 
 ## I can't reach the server from my browser

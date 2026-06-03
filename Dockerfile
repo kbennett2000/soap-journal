@@ -62,9 +62,13 @@ COPY --from=frontend-build /build/dist ./frontend-dist
 # the entrypoint parses these on first boot.
 COPY bible-sources/ ./bible-sources/
 
-# Entrypoint
+# Entrypoint. The sed strips any stray carriage returns (CRLF) so a checkout
+# made on Windows — where git may rewrite line endings — still boots; the
+# script's bash shebang fails cryptically if it carries CRLF. It's a no-op on a
+# normal LF checkout, and a belt-and-suspenders companion to .gitattributes.
 COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Data directory (the docker-compose volume mount lands on top of this).
 RUN mkdir -p /data && chown soap:soap /data
