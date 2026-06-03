@@ -136,6 +136,29 @@ function ReaderInner({
   const compareCode = searchParams.get("compare");
   const isCompareMode = compareCode !== null && compareCode.length > 0;
   const translations = translationsQuery.data?.translations ?? [];
+  const translationLoaded = translations.some((t) => t.code === translationCode);
+
+  // Graceful fallback: a route translation that isn't actually loaded (a stale
+  // persisted code, or a default that was never loaded) would 404 the
+  // translation-detail + chapter fetches → empty book picker + "unable to load".
+  // Once the translations list is known, redirect such a code to a loaded
+  // translation (same book/chapter) instead of dead-ending.
+  useEffect(() => {
+    if (!translationsQuery.isSuccess || translationLoaded) return;
+    const fallback = translationsQuery.data?.translations[0]?.code;
+    if (!fallback) return; // nothing loaded at all — nowhere to fall back to
+    navigate(
+      `/read/${encodeURIComponent(fallback)}/${encodeURIComponent(bookName)}/${chapterNumber}`,
+      { replace: true },
+    );
+  }, [
+    translationsQuery.isSuccess,
+    translationsQuery.data,
+    translationLoaded,
+    bookName,
+    chapterNumber,
+    navigate,
+  ]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -148,8 +171,11 @@ function ReaderInner({
   const highlightRange = parsedRange && !highlightFaded ? parsedRange : undefined;
 
   useEffect(() => {
+    // Don't remember an unknown/stale translation — only persist a loaded one,
+    // so a bogus code can't be replayed on the next bare /read.
+    if (!translationLoaded) return;
     writeLastLocation({ translationCode, bookName, chapterNumber });
-  }, [translationCode, bookName, chapterNumber]);
+  }, [translationLoaded, translationCode, bookName, chapterNumber]);
 
   useEffect(() => {
     writeFontSize(fontSize);

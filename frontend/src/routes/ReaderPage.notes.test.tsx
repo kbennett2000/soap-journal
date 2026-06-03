@@ -47,6 +47,19 @@ function netChapterWithNote() {
 
 function useNetChapter() {
   server.use(
+    // NET must be reported as loaded, else the reader's graceful fallback
+    // redirects the unknown route code to a loaded translation.
+    http.get("/api/v1/bible/translations", () =>
+      HttpResponse.json(
+        {
+          translations: [
+            { code: "NET", name: "New English Translation", language: "en", copyright: "test" },
+            { code: "KJV", name: "King James Version", language: "en", copyright: "test" },
+          ],
+        },
+        { status: 200 },
+      ),
+    ),
     http.get(
       "/api/v1/bible/translations/:code/books/:bookName/chapters/:chapterNumber",
       () => HttpResponse.json(netChapterWithNote(), { status: 200 }),

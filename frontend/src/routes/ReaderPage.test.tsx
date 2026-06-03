@@ -27,6 +27,11 @@ function EntryNewStub(): JSX.Element {
   );
 }
 
+function LocationProbe(): JSX.Element {
+  const loc = useLocation();
+  return <div data-testid="loc-path">{loc.pathname}</div>;
+}
+
 function renderReader(initialEntries: string[]) {
   return renderWithProviders(
     <Routes>
@@ -325,6 +330,34 @@ describe("ReaderPage", () => {
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: /^psalms 23$/i })).toBeInTheDocument(),
     );
+  });
+
+  it("an unknown/stale translation code in the route falls back to a loaded translation", async () => {
+    // The translations handler reports only BSB as loaded; the route's "SB" is
+    // not loaded → instead of dead-ending on empty books + "unable to load",
+    // the reader redirects to a loaded translation (BSB), same book/chapter.
+    renderWithProviders(
+      <Routes>
+        <Route
+          path="/read/:translationCode/:bookName/:chapterNumber"
+          element={
+            <>
+              <ReaderPage />
+              <LocationProbe />
+            </>
+          }
+        />
+      </Routes>,
+      { initialEntries: ["/read/SB/Genesis/1"] },
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("loc-path")).toHaveTextContent("/read/BSB/Genesis/1"),
+    );
+    // And it actually renders the passage (no dead "unable to load").
+    expect(
+      await screen.findByRole("heading", { name: /^genesis 1$/i }),
+    ).toBeInTheDocument();
   });
 });
 
