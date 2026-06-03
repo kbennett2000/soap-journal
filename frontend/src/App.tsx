@@ -7,6 +7,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { SettingsTab } from "@/components/admin/SettingsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
 import { AdminPage } from "@/routes/AdminPage";
+import { BackupPage } from "@/routes/BackupPage";
 import { BibleSearchPage } from "@/routes/BibleSearchPage";
 import { CalendarPage } from "@/routes/CalendarPage";
 import { DashboardPage } from "@/routes/DashboardPage";
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
     element: protectedElement(<ReaderPage />),
   },
   { path: "/calendar", element: protectedElement(<CalendarPage />) },
+  { path: "/backup", element: protectedElement(<BackupPage />) },
   { path: "/entries", element: protectedElement(<EntryListPage />) },
   { path: "/entries/new", element: protectedElement(<EntryNewPage />) },
   { path: "/entries/:entryId", element: protectedElement(<EntryDetailPage />) },

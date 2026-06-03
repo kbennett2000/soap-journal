@@ -333,3 +333,15 @@ export interface SettingsView {
 export interface SettingsEnvelope {
   settings: SettingsView;
 }
+
+// ---- Backup --------------------------------------------------------------
+
+export interface ImportReport {
+  inserted: number;
+  updated: number;
+  skipped_unchanged: number;
+  skipped_missing_translation: number;
+  missing_translations: string[];
+  total_in_file: number;
+  dry_run: boolean;
+}

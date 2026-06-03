@@ -34,6 +34,14 @@ export function Layout({ children }: LayoutProps): JSX.Element {
               </Link>
             )}
             {user && (
+              <Link
+                to="/backup"
+                className="text-sm font-medium text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
+              >
+                Backup
+              </Link>
+            )}
+            {user && (
               <span className="text-sm text-slate-600 dark:text-slate-300">
                 {user.username}
               </span>

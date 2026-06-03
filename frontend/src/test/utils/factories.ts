@@ -1,4 +1,4 @@
-import type { UserResponse } from "@/types/api";
+import type { ImportReport, UserResponse } from "@/types/api";
 
 /**
  * Build a UserResponse with sensible defaults. Override any field via
@@ -11,6 +11,19 @@ export function makeUser(overrides: Partial<UserResponse> = {}): UserResponse {
     username: "alice",
     is_admin: true,
     created_at: "2026-05-27T00:00:00Z",
+    ...overrides,
+  };
+}
+
+export function makeImportReport(overrides: Partial<ImportReport> = {}): ImportReport {
+  return {
+    inserted: 0,
+    updated: 0,
+    skipped_unchanged: 0,
+    skipped_missing_translation: 0,
+    missing_translations: [],
+    total_in_file: 0,
+    dry_run: false,
     ...overrides,
   };
 }

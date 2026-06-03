@@ -86,7 +86,7 @@ export function useOnThisDay(
   });
 }
 
-function invalidateAllEntryViews(
+export function invalidateAllEntryViews(
   qc: ReturnType<typeof useQueryClient>,
 ): Promise<void> {
   return Promise.all([

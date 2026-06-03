@@ -19,7 +19,7 @@ import {
   makePassageEntriesResponse,
   makeTagList,
 } from "@/test/utils/entries";
-import { makeUser } from "@/test/utils/factories";
+import { makeImportReport, makeUser } from "@/test/utils/factories";
 import type {
   Annotation,
   AnnotationUpdate,
@@ -273,6 +273,32 @@ export const adminUpdateSettingsHandler = http.put(
 // detail handler would swallow them with entryId="calendar".
 // Admin handlers come AFTER auth handlers but their paths don't collide
 // with anything else.
+// ---- Backup ---------------------------------------------------------------
+
+export const backupExportHandler = http.get("/api/v1/backup/export", () => {
+  return HttpResponse.json(
+    {
+      format: "soap-journal-backup",
+      version: 1,
+      exported_at: "2026-06-03T00:00:00Z",
+      entries: [],
+    },
+    { status: 200 },
+  );
+});
+
+export const backupImportHandler = http.post(
+  "/api/v1/backup/import",
+  async ({ request }) => {
+    const dryRun = new URL(request.url).searchParams.get("dry_run") === "true";
+    await request.json(); // a JSON body is required
+    return HttpResponse.json(
+      makeImportReport({ inserted: 1, total_in_file: 1, dry_run: dryRun }),
+      { status: 200 },
+    );
+  },
+);
+
 export const defaultHandlers = [
   meHandler,
   loginHandler,
@@ -305,4 +331,6 @@ export const defaultHandlers = [
   adminDemoteUserHandler,
   adminGetSettingsHandler,
   adminUpdateSettingsHandler,
+  backupExportHandler,
+  backupImportHandler,
 ];
