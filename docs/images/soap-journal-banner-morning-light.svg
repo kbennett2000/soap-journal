@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-label="SOAP Journal — self-hosted, offline-first SOAP Bible journaling">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FCF4E8"/>
+      <stop offset="1" stop-color="#F4E1C6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="48%" r="55%">
+      <stop offset="0" stop-color="#FFF7E4" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#FFF7E4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vignette" cx="50%" cy="42%" r="72%">
+      <stop offset="0" stop-color="#E9CFA6" stop-opacity="0"/>
+      <stop offset="0.72" stop-color="#E9CFA6" stop-opacity="0"/>
+      <stop offset="1" stop-color="#D9BD92" stop-opacity="0.40"/>
+    </radialGradient>
+    <radialGradient id="sun" cx="38%" cy="34%" r="72%">
+      <stop offset="0" stop-color="#F8D693"/>
+      <stop offset="0.55" stop-color="#EDAE55"/>
+      <stop offset="1" stop-color="#E0963C"/>
+    </radialGradient>
+    <clipPath id="round">
+      <rect x="2" y="2" width="1276" height="396" rx="26"/>
+    </clipPath>
+  </defs>
+
+  <!-- panel -->
+  <g clip-path="url(#round)">
+    <rect x="2" y="2" width="1276" height="396" fill="url(#bg)"/>
+    <rect x="2" y="2" width="1276" height="396" fill="url(#glow)"/>
+    <rect x="2" y="2" width="1276" height="396" fill="url(#vignette)"/>
+  </g>
+  <!-- warm hairline edge -->
+  <rect x="2.5" y="2.5" width="1275" height="395" rx="25.5" fill="none" stroke="#E7D1AC" stroke-width="1.5"/>
+
+  <!-- emblem: rising sun over an open book -->
+  <g transform="translate(640,114)">
+    <circle r="48" fill="url(#glow)"/>
+    <!-- rays -->
+    <g stroke="#E7A24C" stroke-width="3.2" stroke-linecap="round" opacity="0.95">
+      <line x1="0" y1="-26" x2="0" y2="-42"/>
+      <line x1="-12.3" y1="-22.4" x2="-19.8" y2="-36.0"/>
+      <line x1="12.3" y1="-22.4" x2="19.8" y2="-36.0"/>
+      <line x1="-21.2" y1="-13.0" x2="-33.4" y2="-21.2"/>
+      <line x1="21.2" y1="-13.0" x2="33.4" y2="-21.2"/>
+    </g>
+    <!-- sun -->
+    <circle cx="0" cy="-9" r="15.5" fill="url(#sun)"/>
+    <circle cx="0" cy="-9" r="15.5" fill="none" stroke="#D98E3D" stroke-width="1" opacity="0.5"/>
+
+    <!-- open book -->
+    <g transform="translate(0,30)" fill="#FFFDF8" stroke="#473627" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M -58,-4 C -40,-12 -18,-12 -2,-4 L -2,28 C -18,20 -40,20 -58,28 Z"/>
+      <path d="M 58,-4 C 40,-12 18,-12 2,-4 L 2,28 C 18,20 40,20 58,28 Z"/>
+    </g>
+    <g transform="translate(0,30)" stroke="#473627" stroke-width="2.6" stroke-linecap="round" fill="none">
+      <path d="M 0,-7 L 0,27"/>
+    </g>
+    <!-- page lines -->
+    <g transform="translate(0,30)" stroke="#9A7B55" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.55">
+      <path d="M -48,3 C -34,-2 -20,-2 -9,2"/>
+      <path d="M -49,11 C -35,6 -21,6 -9,10"/>
+      <path d="M 48,3 C 34,-2 20,-2 9,2"/>
+      <path d="M 49,11 C 35,6 21,6 9,10"/>
+    </g>
+  </g>
+
+  <!-- wordmark -->
+  <text x="640" y="234" text-anchor="middle" font-family="Fraunces" font-size="66" fill="#43332A" letter-spacing="0.3">SOAP Journal</text>
+
+  <!-- SOAP expansion -->
+  <text x="640" y="278" text-anchor="middle" font-family="Lora" font-weight="600" font-size="18.5" letter-spacing="3" fill="#8A6F54">Scripture<tspan fill="#B0562C" dx="2" dy="0">&#160;&#183;&#160;</tspan>Observation<tspan fill="#B0562C">&#160;&#183;&#160;</tspan>Application<tspan fill="#B0562C">&#160;&#183;&#160;</tspan>Prayer</text>
+
+  <!-- divider -->
+  <rect x="606" y="298" width="68" height="2" rx="1" fill="#C98A52" opacity="0.7"/>
+
+  <!-- tagline -->
+  <text x="640" y="330" text-anchor="middle" font-family="Lora" font-weight="500" font-style="italic" font-size="18.5" fill="#6E5947">A quiet, self-hosted place to read Scripture and journal what you hear.</text>
+</svg>

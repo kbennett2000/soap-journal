@@ -1,16 +1,17 @@
-# soap-journal
+<p align="center">
+  <img src="docs/images/soap-journal-banner-morning-light.png" alt="SOAP Journal — Scripture · Observation · Application · Prayer. A quiet, self-hosted place to read Scripture and journal what you hear." width="820">
+</p>
 
-![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-
-**A calm, private place to journal through Scripture — on your own computer.**
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
+  <a href="https://github.com/kbennett2000/soap-journal/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/kbennett2000/soap-journal"></a>
+</p>
 
 soap-journal is a self-hosted journaling app built around the SOAP method
 (**S**cripture, **O**bservation, **A**pplication, **P**rayer), with a full Bible
 reader built in. It runs on your own Windows PC, Mac, or Linux server — your
 entries never leave your machine, and once it's installed it works completely
 offline. No accounts to sign up for, no subscription, no internet required.
-
-> **Status:** in development. Not yet released.
 
 ![The soap-journal dashboard, showing recent entries and an "On this day in previous years" panel](docs/screenshots/usage-dashboard-populated.png)
 
