@@ -201,6 +201,9 @@ two rows and the verse text fills the screen width:
 
 ![Reader on a phone showing John 3](../screenshots/mobile-reader.png)
 
+> 💡 Prefer a dedicated phone app? **[SOAP Journal for Android](https://github.com/kbennett2000/soap-journal-mobile)**
+> is a separate, standalone app that runs on the phone itself — no server needed.
+
 ---
 
 Previous: [The dashboard](02-the-dashboard.md) · Next: [Creating entries →](04-creating-entries.md)

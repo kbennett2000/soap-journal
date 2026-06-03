@@ -160,6 +160,9 @@ of the screen while you type:
 
 ![Entry form on a phone](../screenshots/mobile-entry-form.png)
 
+> 💡 Prefer a dedicated phone app? **[SOAP Journal for Android](https://github.com/kbennett2000/soap-journal-mobile)**
+> is a separate, standalone app that runs on the phone itself — no server needed.
+
 ---
 
 Previous: [Reading the Bible](03-reading-the-bible.md) · Next: [Finding entries →](05-finding-entries.md)

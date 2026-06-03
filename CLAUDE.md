@@ -77,7 +77,7 @@ Do not build any of these unless explicitly asked. They are deliberately deferre
 - "Random entry" / rediscover surfacing
 - Self-service password reset, security questions, email anything
 - User-to-user sharing of entries
-- Mobile apps (the responsive web UI is the mobile experience)
+- Mobile apps in this repo (the responsive web UI is the mobile experience here; a separate standalone Android app lives at https://github.com/kbennett2000/soap-journal-mobile)
 - Real-time sync / multi-device conflict handling beyond standard last-write-wins
 - Any feature requiring an outbound internet call at runtime
 - Copyrighted translations shipping in the repo (the parser architecture supports them and ESV/NKJV/NLT parsers are included, but users supply their own PDFs; only the 13 public-domain translations are bundled)

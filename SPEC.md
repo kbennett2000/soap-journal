@@ -186,7 +186,8 @@ Self-registration is **not** an env var: it's a DB-seeded setting (default "clos
 - Random entry / rediscover
 - Self-service password reset
 - User-to-user sharing
-- Native mobile apps
+- Native mobile apps in *this* repo. (A separate, standalone Android app lives at
+  <https://github.com/kbennett2000/soap-journal-mobile>.)
 - Audio Bible, commentary, original-language tools
 - Outbound internet calls of any kind at runtime
 - Copyrighted / restricted translations shipping in the repo (parsers for ESV/NKJV/NLT **and NET** are included, but users supply their own PDFs; only the 13 public-domain translations are bundled)

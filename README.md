@@ -28,6 +28,10 @@ you through every step with screenshots:
 - 🐧 **[Linux / home server](docs/install/ubuntu-server.md)** — run it 24/7 on an
   always-on machine for the whole household
 
+📱 **On an Android phone or tablet?** There's a separate, standalone app —
+**[SOAP Journal for Android](https://github.com/kbennett2000/soap-journal-mobile)** —
+that runs entirely on your device, no server or computer needed.
+
 Not sure which to choose, or want the overview first? Start at the
 **[install guide](docs/install/README.md)**.
 

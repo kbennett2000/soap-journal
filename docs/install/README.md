@@ -1,16 +1,18 @@
 # Installing soap-journal
 
 Welcome! This is the starting line. soap-journal runs on Windows, Mac, and
-Linux, and the steps are a little different on each — so the first thing to do
-is pick the guide that matches the computer you'll run it on.
+Linux — and there's a separate, standalone app for Android phones and tablets.
+The steps are a little different on each, so the first thing to do is pick the
+one that matches the device you'll run it on.
 
 You don't need to be technical. Each guide assumes you've never installed
 anything like this before and explains every step in plain English, with
 screenshots, and tells you exactly what you should see along the way.
 
-Whichever you pick, they all end in the same happy place: soap-journal open in
-your web browser, with you logged in as the administrator, ready to read and
-journal.
+Whichever computer guide you pick, they all end in the same happy place:
+soap-journal open in your web browser, with you logged in as the administrator,
+ready to read and journal. (The Android app is a little different — it's its own
+self-contained app, covered in its own project.)
 
 ---
 
@@ -43,6 +45,14 @@ reached over SSH) that serves soap-journal to every device in the house.
 
 ➡️ **[Ubuntu Server install guide](ubuntu-server.md)**
 
+### 📱 I have an Android phone or tablet
+
+This one's **a separate app**, not the self-hosted server above. **SOAP Journal
+for Android** is standalone — all 13 translations are built in, there's nothing
+to set up, and no computer or server is needed. It lives in its own project.
+
+➡️ **[Get SOAP Journal for Android](https://github.com/kbennett2000/soap-journal-mobile)**
+
 ---
 
 ## Not sure which to choose?
@@ -53,9 +63,13 @@ reached over SSH) that serves soap-journal to every device in the house.
   folder you can copy.
 - **Want it running 24/7 so everyone in the house can reach it any time, even
   when your laptop is closed?** That's what the **Ubuntu Server** guide is for.
+- **Just want it on your Android phone, all self-contained with nothing running
+  on a computer?** Use the **[Android app](https://github.com/kbennett2000/soap-journal-mobile)**.
 
-All three give you the exact same app. The only difference is the machine it
-lives on.
+The three computer guides (Windows, Mac, Linux) give you the exact same
+self-hosted app — the only difference is the machine it lives on, and they all
+end with soap-journal open in your web browser. The **Android app** is a
+separate, self-contained build that runs natively on your phone instead.
 
 ---
 

@@ -64,8 +64,10 @@ here so you know not to look for them:
   [`../bibles/README.md`](../bibles/README.md), but it's a
   command-line task, not a point-and-click one in the UI.
 - **Mobile-specific gestures (swipe between chapters, pull-to-refresh,
-  etc.).** None are wired up in v0.1. The mobile UI is the responsive
-  desktop UI; everything works via tap and on-screen buttons.
+  etc.).** None are wired up in v0.1. The mobile UI here is the responsive
+  desktop UI; everything works via tap and on-screen buttons. (Want a native
+  phone app instead? **[SOAP Journal for Android](https://github.com/kbennett2000/soap-journal-mobile)**
+  is a separate, standalone project.)
 - **A "tag manager" page.** You can add and remove tags on individual
   entries; there's no rename-or-merge UI yet. See
   [`usage/06-tags.md`](usage/06-tags.md).

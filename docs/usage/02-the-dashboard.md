@@ -77,6 +77,9 @@ vertically. Everything else works the same.
 
 ![Dashboard on a phone with stacked panels](../screenshots/mobile-dashboard.png)
 
+> 💡 Prefer a dedicated phone app? **[SOAP Journal for Android](https://github.com/kbennett2000/soap-journal-mobile)**
+> is a separate, standalone app that runs on the phone itself — no server needed.
+
 ---
 
 Previous: [First login](01-first-login.md) · Next: [Reading the Bible →](03-reading-the-bible.md)
