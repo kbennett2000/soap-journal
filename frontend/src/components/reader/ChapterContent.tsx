@@ -33,12 +33,15 @@ const FONT_SIZE_CLASS: Record<FontSize, string> = {
 
 // The verse-number control is the app's primary "new entry" action, so it must
 // read as a real, adequately-sized, focusable target — not an invisible
-// superscript (ADR-0005 Cycle 5b). Mobile tap-target sizing is 5c's concern.
+// superscript (ADR-0005 Cycle 5b). It also needs a comfortable TOUCH target:
+// below lg the hit area is enlarged (~40px), reverting to the compact desktop
+// size at lg (5c-4). No long-press gesture — that collides with native touch
+// text-selection.
 const NUMBER_BUTTON_CLASS =
-  "mr-2 inline-flex min-w-[1.75rem] select-none items-center justify-center rounded px-1 align-baseline text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100";
+  "mr-2 inline-flex min-h-[2.5rem] min-w-[2.5rem] select-none items-center justify-center rounded px-1 align-baseline text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 lg:min-h-0 lg:min-w-[1.75rem] dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100";
 
 const NUMBER_BUTTON_INLINE_CLASS =
-  "mr-1 select-none rounded px-0.5 align-super text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100";
+  "mr-1 select-none rounded px-2 py-1 align-super text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 lg:px-0.5 lg:py-0 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100";
 
 interface ChapterContentProps {
   chapter: ChapterResponse;
@@ -52,6 +55,12 @@ interface ChapterContentProps {
   onCreateHighlight?: (input: AnnotationCreate) => void;
   /** Open the edit panel for the annotations covering a clicked run (5c-3). */
   onOpenAnnotations?: (annotationIds: number[]) => void;
+  /**
+   * Route a clicked translator note up to the host's shared panel shell (5c-4,
+   * primary pane). When omitted (compare panes / isolated tests), ChapterContent
+   * renders NoteView INLINE exactly as in ADR-0004 — the no-regression branch.
+   */
+  onOpenNote?: (note: FootnoteResponse) => void;
   /** Injectable selection reader for tests; defaults to the live one. */
   resolveSelectionFn?: () => VerseSelection | null;
 }
@@ -73,6 +82,7 @@ export function ChapterContent({
   annotations,
   onCreateHighlight,
   onOpenAnnotations,
+  onOpenNote,
   resolveSelectionFn = liveResolveSelection,
 }: ChapterContentProps): JSX.Element {
   // Group headings by the verse number they precede so renderers can
@@ -87,8 +97,14 @@ export function ChapterContent({
   const sizeClass = FONT_SIZE_CLASS[fontSize];
   const verseRef = useScrollToFirstHighlight(highlightRange?.start);
 
-  // The open translator's note renders as a single panel at the article level.
+  // Translator notes: when the host provides `onOpenNote` (primary pane), route
+  // the clicked note up into the shared shell; otherwise (compare panes /
+  // isolated tests) keep the ADR-0004 inline NoteView via local `openNote`.
   const [openNote, setOpenNote] = useState<FootnoteResponse | null>(null);
+  function handleNoteClick(note: FootnoteResponse): void {
+    if (onOpenNote) onOpenNote(note);
+    else setOpenNote(note);
+  }
 
   // Highlights only render in the translation they were made in (inherited from
   // ADR-0004). The list query is already per-translation, but filter defensively
@@ -185,7 +201,7 @@ export function ChapterContent({
           annotations={chapterAnnotations}
           verseRef={verseRef}
           onVerseClick={onVerseClick}
-          onNoteClick={setOpenNote}
+          onNoteClick={handleNoteClick}
         />
       ) : (
         <ParagraphLayout
@@ -195,7 +211,7 @@ export function ChapterContent({
           annotations={chapterAnnotations}
           verseRef={verseRef}
           onVerseClick={onVerseClick}
-          onNoteClick={setOpenNote}
+          onNoteClick={handleNoteClick}
         />
       )}
       {openNote && (
@@ -503,7 +519,7 @@ interface NoteViewProps {
   onClose: () => void;
 }
 
-function NoteView({ note, translationCode, onClose }: NoteViewProps): JSX.Element {
+export function NoteView({ note, translationCode, onClose }: NoteViewProps): JSX.Element {
   const label = note.note_type ? NOTE_TYPE_LABELS[note.note_type] : "Note";
   return (
     <aside

@@ -232,3 +232,45 @@ delete behavior they used to prove is re-proven end-to-end through the panel in
 - New end-to-end (panel) coverage: single-verse delete; **multi-verse delete** from a covered span;
   **stacked delete of the one underneath** via the chooser; color PATCH re-render; confirm-if-note
   delete. typecheck + lint + 222 tests green.
+
+---
+
+## Cycle 5c-4 addendum — responsive panel shell + NoteView convergence + mobile new-entry
+
+**Status:** Implemented (2026-06-02). The reader's panels now live in a responsive shell; translator
+notes converge into it on the primary pane; the verse-number new-entry control is touch-sized. Touch
+text-SELECTION (touchend + deferred range) remains **5c-5**.
+
+- **`ReaderPanelShell` (CSS-only, single render).** One element rendered once; Tailwind `lg:` variants
+  flip it between a fixed slide-up **bottom-sheet** (`<lg`, dimmed `lg:hidden` backdrop + drag-handle)
+  and a **sticky docked right column** (`lg:`). The single-pane region is a `lg:flex` row (reader
+  `min-w-0 lg:flex-1`, shell second child). Rendering content once (not a desktop+mobile copy) avoids
+  duplicate `id`/`testid` collisions, so no JS media-query hook is needed. Breakpoint **`lg`/1024px**.
+  Dismiss: Escape, the Close control, and (mobile) a backdrop tap — Escape is **ignored while a native
+  `<dialog>` is open** (so cancelling the delete-confirm doesn't also close the panel). Full
+  focus-trap / `role=dialog` for the mobile sheet is deferred to **5c-6** (focus management).
+- **One panel at a time (only-when-open).** ReaderPage's state is a union
+  `{kind:"annotation"} | {kind:"note"} | null`; the shell renders only when set, and opening a note
+  replaces an open annotation panel and vice-versa. The render-phase chapter-change reset closes any
+  open panel on navigation. No always-on empty dock (max reading width).
+- **NoteView convergence via optional `onOpenNote` (no ADR-0004 regression).** A translator note and a
+  user highlight are different surfaces — read-only (`note_type` label + body + cross-ref `Link`s) vs
+  editable (color/note/delete) — and never merge. When ChapterContent gets `onOpenNote` (primary
+  pane), a marker click routes the note up into the shell and the inline `NoteView` is not rendered.
+  When `onOpenNote` is **absent** (compare panes via ChapterPane, and the isolated notes test),
+  ChapterContent keeps rendering `NoteView` **inline exactly as in ADR-0004** — the no-regression
+  branch (covered explicitly by tests). `NoteView`'s markup/content is unchanged; it's merely
+  `export`ed so the shell can host it, and its `translationCode` is sourced from the loaded chapter
+  (parity with the inline path) for correct cross-ref URLs.
+- **Mobile new-entry affordance (settled).** The verse-number new-entry control gets a comfortable
+  ~40px touch target below `lg` (block: `min-h/min-w`; inline/paragraph: padding), reverting to the
+  compact desktop size at `lg`. No long-press (it would collide with native touch text-selection).
+- **Scope cut:** a simple slide-up sheet (max-h-80vh, backdrop + Escape + Close, scrolls) — **no**
+  drag-to-peek/resize gesture.
+- **Tested.** Automated (RTL): shell renders content once; Escape/Close/backdrop dismiss; native-
+  `<dialog>` Escape guard; note marker → NoteView in the shell + cross-ref href; highlight↔note swap;
+  chapter-nav closes an open note; inline-fallback regression guard (note-view inside chapter-content
+  when no `onOpenNote`; routes up and not inline when provided); enlarged tap-target classes (both
+  layouts); all 5c-3 highlight flows still pass through the shell. typecheck + lint + 236 tests green.
+  Manual (jsdom does no layout/gestures): bottom-sheet vs docked column across the `lg` boundary;
+  the docked panel stays in view while scrolling; comfortable tap target on a phone; dark mode.

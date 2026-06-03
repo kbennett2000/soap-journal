@@ -100,6 +100,57 @@ describe("ChapterContent — translator's notes", () => {
     fireEvent.click(screen.getByTestId("verse-1-new-entry"));
     expect(onVerseClick).toHaveBeenCalledTimes(1);
   });
+
+  // ---- 5c-4: NoteView host (regression guard for the ADR-0004 inline path) ----
+
+  it("without onOpenNote, NoteView renders INLINE inside the chapter (ADR-0004 path)", () => {
+    renderChapter(netChapter());
+    fireEvent.click(screen.getAllByTestId("note-marker")[0]!);
+    // The note view is a descendant of the chapter article, not lifted to a host.
+    expect(screen.getByTestId("chapter-content")).toContainElement(
+      screen.getByTestId("note-view"),
+    );
+  });
+
+  it("with onOpenNote, a marker routes the note UP and does not render inline", () => {
+    const onOpenNote = vi.fn();
+    renderWithProviders(
+      <ChapterContent
+        chapter={netChapter()}
+        layout="verse"
+        fontSize="M"
+        onVerseClick={() => {}}
+        onOpenNote={onOpenNote}
+      />,
+      { initialEntries: ["/read/NET/Genesis/1"] },
+    );
+    fireEvent.click(screen.getAllByTestId("note-marker")[0]!);
+    expect(onOpenNote).toHaveBeenCalledTimes(1);
+    expect(onOpenNote).toHaveBeenCalledWith(expect.objectContaining({ note_type: "tn" }));
+    expect(screen.queryByTestId("note-view")).not.toBeInTheDocument();
+  });
+
+  it("gives the verse-number new-entry control a larger touch target below lg, compact at lg", () => {
+    renderChapter(netChapter());
+    const btn = screen.getByTestId("verse-1-new-entry");
+    expect(btn.className).toMatch(/min-h-\[2\.5rem\]/); // ~40px hit area on touch
+    expect(btn.className).toMatch(/lg:min-w-\[1\.75rem\]/); // compact on desktop
+  });
+
+  it("enlarges the inline (paragraph-layout) new-entry target on touch too", () => {
+    renderWithProviders(
+      <ChapterContent
+        chapter={netChapter()}
+        layout="paragraph"
+        fontSize="M"
+        onVerseClick={() => {}}
+      />,
+      { initialEntries: ["/read/NET/Genesis/1"] },
+    );
+    const btn = screen.getByTestId("verse-1-new-entry");
+    expect(btn.className).toMatch(/px-2/); // padded hit area on touch
+    expect(btn.className).toMatch(/lg:px-0\.5/); // compact on desktop
+  });
 });
 
 describe("ChapterContent — plain translations unchanged", () => {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { BookPicker } from "@/components/reader/BookPicker";
-import { ChapterContent } from "@/components/reader/ChapterContent";
+import { ChapterContent, NoteView } from "@/components/reader/ChapterContent";
 import { ChapterError } from "@/components/reader/ChapterError";
 import { ChapterPane } from "@/components/reader/ChapterPane";
 import { ChapterPicker } from "@/components/reader/ChapterPicker";
@@ -34,6 +34,7 @@ import type {
   Annotation,
   BookSummary,
   ChapterPointer,
+  FootnoteResponse,
   ResolvedReference,
   TranslationSummary,
   VerseResponse,
@@ -111,7 +112,9 @@ function ReaderInner({
   // the active annotation (defaults to the top). Hosted in the responsive shell
   // (5c-4). The open-surface union grows a "note" kind in 5c-4 step 3.
   const [panel, setPanel] = useState<
-    { kind: "annotation"; ids: number[]; activeId: number } | null
+    | { kind: "annotation"; ids: number[]; activeId: number }
+    | { kind: "note"; note: FootnoteResponse }
+    | null
   >(null);
 
   // Reset the edit panel when the chapter changes — the URL params drive
@@ -211,6 +214,12 @@ function ReaderInner({
           .map((id) => chapterAnnotations.find((a) => a.id === id))
           .filter((a): a is Annotation => a !== undefined)
       : [];
+
+  // Clicking a translator-note marker routes the read-only NoteView into the
+  // same shell (5c-4), replacing any open annotation panel (one surface at a time).
+  function handleOpenNote(note: FootnoteResponse): void {
+    setPanel({ kind: "note", note });
+  }
 
   function handleVerseClick(verse: VerseResponse, paneCode?: string): void {
     const code = paneCode ?? translationCode;
@@ -363,6 +372,7 @@ function ReaderInner({
                 annotations={chapterAnnotations}
                 onCreateHighlight={(input) => createHighlight.mutate(input)}
                 onOpenAnnotations={handleOpenAnnotations}
+                onOpenNote={handleOpenNote}
               />
             )}
           </div>
@@ -387,6 +397,20 @@ function ReaderInner({
                   deleteHighlight.mutate(id);
                   setPanel(null);
                 }}
+                onClose={() => setPanel(null)}
+              />
+            </ReaderPanelShell>
+          )}
+
+          {panel?.kind === "note" && (
+            <ReaderPanelShell onClose={() => setPanel(null)}>
+              <NoteView
+                note={panel.note}
+                // Source from the loaded chapter (parity with the inline path)
+                // so cross-ref URLs use the chapter's actual translation.
+                translationCode={
+                  chapterQuery.data?.translation_code ?? translationCode
+                }
                 onClose={() => setPanel(null)}
               />
             </ReaderPanelShell>
